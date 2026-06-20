@@ -1,17 +1,19 @@
 'use client'
 
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
 import { JournalTrade, JournalConfig, JournalStats, computeStats } from '@/lib/journal-types'
 
 interface JournalState {
   trades: JournalTrade[]
   config: JournalConfig
-  addTrade: (trade: JournalTrade) => void
-  updateTrade: (id: string, trade: Partial<JournalTrade>) => void
-  deleteTrade: (id: string) => void
+  loading: boolean
+  error: string | null
+  fetchTrades: () => Promise<void>
+  addTrade: (trade: JournalTrade) => Promise<void>
+  updateTrade: (id: string, trade: Partial<JournalTrade>) => Promise<void>
+  deleteTrade: (id: string) => Promise<void>
   setConfig: (config: Partial<JournalConfig>) => void
-  importTrades: (trades: JournalTrade[]) => void
+  importTrades: (trades: JournalTrade[]) => Promise<void>
   getStats: () => JournalStats
 }
 
@@ -23,43 +25,91 @@ const defaultConfig: JournalConfig = {
   maxLossPercent: 100,
 }
 
-function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 9)
-}
+export const useJournalStore = create<JournalState>()((set, get) => ({
+  trades: [],
+  config: { ...defaultConfig },
+  loading: false,
+  error: null,
 
-export const useJournalStore = create<JournalState>()(
-    persist(
-      (set, get) => ({
-        trades: [] as JournalTrade[],
-        config: { ...defaultConfig },
+  fetchTrades: async () => {
+    set({ loading: true, error: null })
+    try {
+      const res = await fetch('/api/trades')
+      if (!res.ok) throw new Error('Failed to fetch trades')
+      const data = await res.json()
+      set({ trades: data.trades, loading: false })
+    } catch {
+      set({ error: 'Failed to load trades', loading: false })
+    }
+  },
 
-        addTrade: (trade) => {
-          set({ trades: [...get().trades, { ...trade, id: trade.id || generateId() }] })
-        },
+  addTrade: async (trade) => {
+    try {
+      const res = await fetch('/api/trades', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(trade),
+      })
+      if (!res.ok) throw new Error('Failed to create trade')
+      const data = await res.json()
+      set({ trades: [...get().trades, data.trade] })
+    } catch {
+      set({ error: 'Failed to save trade' })
+    }
+  },
 
-      updateTrade: (id, partial) => {
-        set({
-          trades: get().trades.map(t => t.id === id ? { ...t, ...partial } : t),
+  updateTrade: async (id, partial) => {
+    try {
+      const res = await fetch(`/api/trades/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(partial),
+      })
+      if (!res.ok) throw new Error('Failed to update trade')
+      const data = await res.json()
+      set({
+        trades: get().trades.map(t => (t.id === id ? data.trade : t)),
+      })
+    } catch {
+      set({ error: 'Failed to update trade' })
+    }
+  },
+
+  deleteTrade: async (id) => {
+    try {
+      const res = await fetch(`/api/trades/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to delete trade')
+      set({ trades: get().trades.filter(t => t.id !== id) })
+    } catch {
+      set({ error: 'Failed to delete trade' })
+    }
+  },
+
+  setConfig: (partial) => {
+    set({ config: { ...get().config, ...partial } })
+  },
+
+  importTrades: async (trades) => {
+    const existing = get().trades
+    const ids = new Set(existing.map(t => t.id))
+    const newTrades = trades.filter(t => !ids.has(t.id))
+
+    for (const trade of newTrades) {
+      try {
+        const res = await fetch('/api/trades', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(trade),
         })
-      },
+        if (res.ok) {
+          const data = await res.json()
+          existing.push(data.trade)
+        }
+      } catch { /* skip failed imports */ }
+    }
 
-      deleteTrade: (id) => {
-        set({ trades: get().trades.filter(t => t.id !== id) })
-      },
+    set({ trades: [...existing] })
+  },
 
-      setConfig: (partial) => {
-        set({ config: { ...get().config, ...partial } })
-      },
-
-      importTrades: (trades) => {
-        const existing = get().trades
-        const ids = new Set(existing.map(t => t.id))
-        const newTrades = trades.filter(t => !ids.has(t.id))
-        set({ trades: [...existing, ...newTrades] })
-      },
-
-      getStats: () => computeStats(get().trades, get().config),
-    }),
-    { name: 'rawfx-journal' }
-  )
-)
+  getStats: () => computeStats(get().trades, get().config),
+}))

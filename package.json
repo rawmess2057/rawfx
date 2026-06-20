@@ -9,21 +9,32 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@auth/core": "^0.41.2",
+    "@auth/prisma-adapter": "^2.11.2",
+    "@libsql/client": "^0.17.4",
+    "@prisma/adapter-libsql": "^7.8.0",
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
     "framer-motion": "^12.40.0",
     "lightweight-charts": "^5.2.0",
     "next": "16.2.9",
+    "next-auth": "^5.0.0-beta.31",
+    "pg": "^8.22.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "twitter-api-v2": "^1.29.0",
     "yahoo-finance2": "^3.15.3",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
+    "prisma": "^7.8.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
