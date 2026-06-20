@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import NewsBell from './NewsBell'
 
 const links = [
   { href: '/', label: 'Sentiment' },
@@ -32,6 +33,9 @@ export default function NavBar() {
             {link.label}
           </Link>
         ))}
+      </div>
+      <div className="ml-auto flex items-center">
+        <NewsBell />
       </div>
     </nav>
   )
