@@ -22,11 +22,20 @@ const trendOrder = { bullish: 3, neutral: 2, bearish: 1 }
 export default function SentimentTable({ results, selected, onSelect, onRemove }: Props) {
   const [sortCol, setSortCol] = useState<SortCol>(null)
   const [sortDir, setSortDir] = useState<SortDir>('desc')
+  const [randomSeed, setRandomSeed] = useState(0)
+
+  function seededRandom(seed: number, i: number) {
+    const x = Math.sin(seed * 9999 + i) * 10000
+    return x - Math.floor(x)
+  }
 
   const sorted = useMemo(() => {
     if (!sortCol) return results
     if (sortDir === 'random') {
-      return [...results].sort(() => Math.random() - 0.5)
+      return [...results]
+        .map((r, i) => ({ r, rand: seededRandom(randomSeed, i) }))
+        .sort((a, b) => a.rand - b.rand)
+        .map(x => x.r)
     }
     return [...results].sort((a, b) => {
       let cmp = 0
@@ -36,12 +45,12 @@ export default function SentimentTable({ results, selected, onSelect, onRemove }
       else if (sortCol === 'trend') cmp = trendOrder[a.overallTrend] - trendOrder[b.overallTrend]
       return sortDir === 'desc' ? -cmp : cmp
     })
-  }, [results, sortCol, sortDir])
+  }, [results, sortCol, sortDir, randomSeed])
 
   function handleSort(col: SortCol) {
     if (sortCol === col) {
       if (sortDir === 'desc') setSortDir(col === 'symbol' ? 'asc' : 'asc')
-      else if (sortDir === 'asc' && col === 'symbol') setSortDir('random')
+      else if (sortDir === 'asc' && col === 'symbol') { setSortDir('random'); setRandomSeed(s => s + 1) }
       else { setSortCol(null); setSortDir('desc') }
     } else {
       setSortCol(col)

@@ -7,7 +7,6 @@ import { SentimentResult } from '@/lib/types'
 import SearchBar from './SearchBar'
 import SentimentTable from './SentimentTable'
 
-
 export default function Dashboard() {
   const {
     watchlist, results, selectedSymbol, isLoading, lastUpdated, error,
@@ -16,7 +15,6 @@ export default function Dashboard() {
 
   const hasWatchlist = watchlist.length > 0
 
-  // Initialize watchlist
   useEffect(() => {
     if (watchlist.length === 0 && DEFAULT_WATCHLIST.length > 0) {
       DEFAULT_WATCHLIST.forEach(s => addSymbol(s))
@@ -45,12 +43,10 @@ export default function Dashboard() {
     }
   }, [watchlist, setResults, setLoading, setError])
 
-  // Initial fetch on watchlist ready
   useEffect(() => {
     if (hasWatchlist) fetchAll()
   }, [hasWatchlist])
 
-  // Re-fetch when watchlist changes (symbol added/removed), and auto-refresh
   useEffect(() => {
     if (!hasWatchlist) return
     const interval = setInterval(fetchAll, 60_000)
@@ -66,20 +62,10 @@ export default function Dashboard() {
     .filter((r): r is SentimentResult => r != null)
 
   return (
-    <div className="flex h-screen">
-      {/* Main Content */}
+    <div className="flex h-[calc(100vh-49px)]">
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Bar */}
         <header className="glass border-b border-white/5 px-6 py-3.5 flex items-center gap-4 shrink-0">
-          <div className="flex items-center gap-3">
-            <h1 className="text-lg font-bold text-[#f1f5f9] tracking-tight">
-              <span className="text-[#14f5c7]">Raw</span>FX
-            </h1>
-            <span className="text-[10px] font-semibold text-[#475569] uppercase tracking-widest bg-white/5 px-2 py-0.5 rounded">
-              Institutional Sentiment
-            </span>
-          </div>
-
           <SearchBar onSelect={handleSymbolAdd} />
 
           <div className="flex items-center gap-3 ml-auto">
@@ -115,7 +101,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Table */}
+        {/* Content */}
         <div className="flex-1 flex flex-col p-6 pt-4 overflow-hidden min-h-0">
           {isLoading && resultArray.length === 0 ? (
             <div className="space-y-3">
@@ -138,13 +124,11 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Footer */}
           <div className="mt-4 text-[10px] text-[#475569] text-center">
             Auto-refreshes every 60s · Data: Yahoo Finance
           </div>
         </div>
       </div>
-
     </div>
   )
 }
