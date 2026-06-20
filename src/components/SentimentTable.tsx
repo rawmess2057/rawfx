@@ -1,6 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
+import { useState, useMemo } from 'react'
 import { SentimentResult } from '@/lib/types'
 import SentimentBar from './SentimentBar'
 import Sparkline from './Sparkline'
@@ -13,7 +14,47 @@ interface Props {
   onRemove: (symbol: string) => void
 }
 
+type SortCol = 'symbol' | 'intraday' | 'daily' | 'trend' | null
+type SortDir = 'asc' | 'desc' | 'random'
+
+const trendOrder = { bullish: 3, neutral: 2, bearish: 1 }
+
 export default function SentimentTable({ results, selected, onSelect, onRemove }: Props) {
+  const [sortCol, setSortCol] = useState<SortCol>(null)
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
+
+  const sorted = useMemo(() => {
+    if (!sortCol) return results
+    if (sortDir === 'random') {
+      return [...results].sort(() => Math.random() - 0.5)
+    }
+    return [...results].sort((a, b) => {
+      let cmp = 0
+      if (sortCol === 'symbol') cmp = a.symbol.localeCompare(b.symbol)
+      else if (sortCol === 'intraday') cmp = a.intraday.bullPct - b.intraday.bullPct
+      else if (sortCol === 'daily') cmp = a.daily.bullPct - b.daily.bullPct
+      else if (sortCol === 'trend') cmp = trendOrder[a.overallTrend] - trendOrder[b.overallTrend]
+      return sortDir === 'desc' ? -cmp : cmp
+    })
+  }, [results, sortCol, sortDir])
+
+  function handleSort(col: SortCol) {
+    if (sortCol === col) {
+      if (sortDir === 'desc') setSortDir(col === 'symbol' ? 'asc' : 'asc')
+      else if (sortDir === 'asc' && col === 'symbol') setSortDir('random')
+      else { setSortCol(null); setSortDir('desc') }
+    } else {
+      setSortCol(col)
+      setSortDir('desc')
+    }
+  }
+
+  function sortIcon(col: SortCol) {
+    if (sortCol !== col) return null
+    const label = sortDir === 'desc' ? '▲' : sortDir === 'asc' ? '▼' : '↺'
+    return <span className="ml-1 inline-block text-[10px]">{label}</span>
+  }
+
   if (results.length === 0) return null
 
   return (
@@ -21,16 +62,24 @@ export default function SentimentTable({ results, selected, onSelect, onRemove }
       <table className="w-full text-sm">
         <thead>
           <tr className="text-[11px] font-semibold text-[#475569] uppercase tracking-wider border-b border-white/5 sticky top-0 z-10" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-            <th className="text-left py-3 px-3 w-28">Symbol</th>
-            <th className="text-left py-3 px-3 w-44">Intraday</th>
-            <th className="text-left py-3 px-3 w-44">Daily</th>
-            <th className="text-left py-3 px-3 w-24">Trend</th>
+            <th className="text-left py-3 px-3 w-28 cursor-pointer select-none hover:text-[#94a3b8] transition-colors" onClick={() => handleSort('symbol')}>
+              Symbol{sortIcon('symbol')}
+            </th>
+            <th className="text-left py-3 px-3 w-44 cursor-pointer select-none hover:text-[#94a3b8] transition-colors" onClick={() => handleSort('intraday')}>
+              Intraday{sortIcon('intraday')}
+            </th>
+            <th className="text-left py-3 px-3 w-44 cursor-pointer select-none hover:text-[#94a3b8] transition-colors" onClick={() => handleSort('daily')}>
+              Daily{sortIcon('daily')}
+            </th>
+            <th className="text-left py-3 px-3 w-24 cursor-pointer select-none hover:text-[#94a3b8] transition-colors" onClick={() => handleSort('trend')}>
+              Trend{sortIcon('trend')}
+            </th>
             <th className="text-left py-3 px-3 w-24">Phase</th>
             <th className="text-right py-3 px-3 w-8"></th>
           </tr>
         </thead>
         <tbody>
-          {results.map((r, i) => {
+          {sorted.map((r, i) => {
             const isSelected = selected === r.symbol
             const overallBull = r.overallTrend === 'bullish'
 
