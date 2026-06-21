@@ -1,11 +1,13 @@
 'use client'
 
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useRef } from 'react'
 import { useStore } from '@/store/useStore'
-import { DEFAULT_WATCHLIST } from '@/constants/symbols'
-import { SentimentResult } from '@/lib/types'
+import { UNIQUE_SYMBOLS } from '@/constants/symbols'
 import SearchBar from './SearchBar'
 import SentimentTable from './SentimentTable'
+
+const BATCH_SIZE = 20
+const BATCH_DELAY = 300
 
 export default function Dashboard() {
   const {
@@ -14,64 +16,70 @@ export default function Dashboard() {
   } = useStore()
 
   const hasWatchlist = watchlist.length > 0
+  const fetchingRef = useRef(false)
 
   useEffect(() => {
-    if (watchlist.length === 0 && DEFAULT_WATCHLIST.length > 0) {
-      DEFAULT_WATCHLIST.forEach(s => addSymbol(s))
+    if (watchlist.length === 0 && UNIQUE_SYMBOLS.length > 0) {
+      UNIQUE_SYMBOLS.forEach(s => addSymbol(s.symbol))
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const fetchAll = useCallback(async () => {
-    if (watchlist.length === 0) return
-    setLoading(true)
-    setError(null)
-
+  const fetchBatch = useCallback(async (symbols: string[]) => {
     try {
       const res = await fetch('/api/sentiment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ symbols: watchlist }),
+        body: JSON.stringify({ symbols }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
-      setResults(data.results)
+      if (data.results) setResults(data.results)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to fetch sentiment data')
-    } finally {
-      setLoading(false)
     }
-  }, [watchlist, setResults, setLoading, setError])
+  }, [setResults, setError])
+
+  const fetchAll = useCallback(async () => {
+    if (watchlist.length === 0 || fetchingRef.current) return
+    fetchingRef.current = true
+    setLoading(true)
+    setError(null)
+
+    for (let i = 0; i < watchlist.length; i += BATCH_SIZE) {
+      const batch = watchlist.slice(i, i + BATCH_SIZE)
+      await fetchBatch(batch)
+      if (i + BATCH_SIZE < watchlist.length) {
+        await new Promise(r => setTimeout(r, BATCH_DELAY))
+      }
+    }
+
+    fetchingRef.current = false
+    setLoading(false)
+  }, [watchlist, fetchBatch, setLoading, setError])
 
   useEffect(() => {
     if (hasWatchlist) fetchAll()
   }, [hasWatchlist])
 
-  useEffect(() => {
-    if (!hasWatchlist) return
-    const interval = setInterval(fetchAll, 60_000)
-    return () => clearInterval(interval)
-  }, [hasWatchlist])
-
-  function handleSymbolAdd(symbol: string) {
-    addSymbol(symbol)
-  }
-
   const resultArray = watchlist
     .map(s => results[s])
-    .filter((r): r is SentimentResult => r != null)
+    .filter((r): r is NonNullable<typeof r> => r != null)
 
   return (
     <div className="flex h-[calc(100vh-49px)]">
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Bar */}
         <header className="glass border-b border-white/5 px-6 py-3.5 flex items-center gap-4 shrink-0">
-          <SearchBar onSelect={handleSymbolAdd} />
+          <SearchBar onSelect={addSymbol} />
 
           <div className="flex items-center gap-3 ml-auto">
             <div className="flex items-center gap-2 text-xs text-[#475569]">
               <span className={`w-1.5 h-1.5 rounded-full ${isLoading ? 'bg-[#f59e0b] animate-pulse' : 'bg-[#14f5c7]'}`} />
-              {isLoading ? 'Updating...' : lastUpdated ? new Date(lastUpdated).toLocaleTimeString() : '--'}
+              {isLoading
+                ? `Loading ${resultArray.length}/${watchlist.length}...`
+                : lastUpdated
+                  ? `${watchlist.length} symbols · ${new Date(lastUpdated).toLocaleTimeString()}`
+                  : '--'}
             </div>
 
             <button
@@ -85,10 +93,10 @@ export default function Dashboard() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  Refresh
+                  Loading...
                 </span>
               ) : (
-                'Refresh'
+                'Refresh All'
               )}
             </button>
           </div>
@@ -125,7 +133,9 @@ export default function Dashboard() {
           )}
 
           <div className="mt-4 text-[10px] text-[#475569] text-center">
-            Auto-refreshes every 60s · Data: Yahoo Finance
+            {isLoading
+              ? `Fetching ${resultArray.length}/${watchlist.length} symbols...`
+              : `Auto-refreshes every 60s · ${resultArray.length} symbols loaded · Data: Yahoo Finance`}
           </div>
         </div>
       </div>
