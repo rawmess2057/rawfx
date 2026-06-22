@@ -63,6 +63,7 @@ export const useStore = create<StoreState>()(
     }),
     {
       name: 'rawfx-watchlist',
+      version: 1,
       partialize: (state) => ({ watchlist: state.watchlist }),
     },
   ),

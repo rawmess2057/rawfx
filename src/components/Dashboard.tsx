@@ -21,14 +21,6 @@ export default function Dashboard() {
 
   const [searchQuery, setSearchQuery] = useState('')
 
-  useEffect(() => {
-    const VERSION = 'rawfx-v1'
-    if (localStorage.getItem('rawfx-version') !== VERSION) {
-      localStorage.removeItem('rawfx-watchlist')
-      localStorage.setItem('rawfx-version', VERSION)
-    }
-  }, [])
-
   const fetchBatch = useCallback(async (symbols: string[]) => {
     try {
       const res = await fetch('/api/sentiment', {
@@ -50,10 +42,14 @@ export default function Dashboard() {
     setLoading(true)
     setError(null)
 
-    for (let i = 0; i < watchlist.length; i += BATCH_SIZE) {
-      const batch = watchlist.slice(i, i + BATCH_SIZE)
+    const validSymbols = watchlist.filter(s =>
+      UNIQUE_SYMBOLS.some(u => u.symbol === s)
+    )
+
+    for (let i = 0; i < validSymbols.length; i += BATCH_SIZE) {
+      const batch = validSymbols.slice(i, i + BATCH_SIZE)
       await fetchBatch(batch)
-      if (i + BATCH_SIZE < watchlist.length) {
+      if (i + BATCH_SIZE < validSymbols.length) {
         if (i + BATCH_SIZE >= 10) {
           await new Promise(r => setTimeout(r, BATCH_DELAY))
         }
