@@ -17,7 +17,12 @@ export async function GET() {
 
     const coins: CoinGeckoCoin[] = await res.json()
     const symbols = coins
-      .filter(c => c.symbol && c.current_price != null)
+      .filter(c => {
+        if (!c.symbol || c.current_price == null) return false
+        if (c.current_price < 0.000001) return false
+        if (!/^[a-zA-Z0-9]+$/.test(c.symbol)) return false
+        return true
+      })
       .map(c => {
         const sym = c.symbol.toUpperCase()
         return {

@@ -18,9 +18,9 @@ export async function POST(req: NextRequest) {
 
     const results: SentimentResult[] = []
 
-    // Process in parallel batches to avoid rate limits
-    const batchSize = 5
-    const batchDelay = 500
+    // Process all symbols in parallel
+    const batchSize = symbols.length
+    const batchDelay = 0
     for (let i = 0; i < symbols.length; i += batchSize) {
       const batch = symbols.slice(i, i + batchSize)
       const batchResults = await Promise.allSettled(
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
           }
 
           const timeout = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error(`Timeout processing ${displaySymbol}`)), 12000)
+            setTimeout(() => reject(new Error(`Timeout processing ${displaySymbol}`)), 6000)
           )
           return Promise.race([processSymbol(), timeout])
         })
@@ -98,9 +98,6 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      if (i + batchSize < symbols.length) {
-        await new Promise(r => setTimeout(r, batchDelay))
-      }
     }
 
     return NextResponse.json({ results })
