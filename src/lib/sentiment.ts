@@ -1,5 +1,5 @@
-import { Candle, SwingPoint, StructureEvent, PhaseResult, PeriodSentiment } from './types'
-import { computeEmaStatus, computeChopIndex, computeChange24h, computeRSI, detectDivergence, computeADX, computeMomentumScore } from './indicators'
+import { Candle, SwingPoint, StructureEvent, StructureState, PhaseResult, PeriodSentiment } from './types'
+import { computeEmaStatus, computeChopIndex, computeChange24h, computeRSI, detectDivergence, computeADX, computeMomentumScore, computeContextScore } from './indicators'
 
 function detectSwingPoints(candles: Candle[], lookback: number = 3): SwingPoint[] {
   const swings: SwingPoint[] = []
@@ -181,73 +181,73 @@ function analyzeStructure(candles: Candle[], swings: SwingPoint[]): {
   return { bosEvents, chochEvents, structureScore, trend }
 }
 
-function detectPhase(candles: Candle[], swings: SwingPoint[], trend: string): PhaseResult {
-  if (swings.length < 3) return { phase: 'Neutral', description: 'Insufficient swing data to determine phase' }
-
-  const recentSwings = swings.slice(-6)
+function computeStructureState(
+  swings: SwingPoint[],
+  bosEvents: StructureEvent[],
+  chochEvents: StructureEvent[],
+  trend: string,
+  candles: Candle[]
+): StructureState {
+  const recentSwings = swings.slice(-10)
   const highs = recentSwings.filter(s => s.type === 'high').map(s => s.price)
   const lows = recentSwings.filter(s => s.type === 'low').map(s => s.price)
 
-  if (highs.length < 2 || lows.length < 2) return { phase: 'Neutral', description: 'Not enough swing points' }
+  const rangeHigh = highs.length > 0
+    ? Math.max(...highs)
+    : (candles.length > 0 ? Math.max(...candles.slice(-5).map(c => c.high)) : 0)
+  const rangeLow = lows.length > 0
+    ? Math.min(...lows)
+    : (candles.length > 0 ? Math.min(...candles.slice(-5).map(c => c.low)) : 0)
 
-  const lastHigh = highs[highs.length - 1]
-  const prevHigh = highs[highs.length - 2]
-  const lastLow = lows[lows.length - 1]
-  const prevLow = lows[lows.length - 2]
-
-  const bb = (lastLow - prevLow) / prevLow * 100
-  const hh = (lastHigh - prevHigh) / prevHigh * 100
-
-  const recentVolatility = candles.slice(-10).reduce((s, c) => s + (c.high - c.low), 0) / 10
-  const olderVolatility = candles.slice(-20, -10).reduce((s, c) => s + (c.high - c.low), 0) / 10
-  const volShrinking = recentVolatility < olderVolatility * 0.85
-  const volExpanding = recentVolatility > olderVolatility * 1.15
-
-  const isBase = Math.abs(bb) < 2 && Math.abs(hh) < 2
-
-  if (trend === 'bullish' && isBase && volShrinking && lows.length >= 3) {
-    const olderLow = lows[lows.length - 3]
-    if (lows[lows.length - 1] > olderLow) {
-      return { phase: 'Accumulation', description: 'Price basing after markdown with higher lows — accumulation underway' }
-    }
+  const sorted = [...bosEvents].sort((a, b) => b.index - a.index)
+  let consecutiveBOS = 0
+  for (const ev of sorted) {
+    if ((trend === 'bullish' && ev.direction === 'bullish') || (trend === 'bearish' && ev.direction === 'bearish')) {
+      consecutiveBOS++
+    } else break
   }
 
-  if (trend === 'bullish' && hh > 0 && bb >= 0) {
-    return { phase: 'Markup', description: `Higher highs (${hh.toFixed(1)}%) with higher lows — impulsive markup phase` }
-  }
+  const allEvents = [...bosEvents, ...chochEvents]
+  const dirs = allEvents.map(e => e.direction)
+  const cleanSequence = dirs.length === 0 || dirs.every(d => d === dirs[0])
 
-  if (trend === 'bullish' && isBase && volShrinking && highs.length >= 3) {
-    const olderHigh = highs[highs.length - 3]
-    if (lastHigh >= olderHigh * 0.98) {
-      return { phase: 'Reaccumulation', description: 'Pause in uptrend with tight range — reaccumulation before continuation' }
-    }
-  }
+  return { bias: trend as 'bullish' | 'bearish' | 'neutral', consecutiveBOS, cleanSequence, rangeHigh, rangeLow }
+}
 
-  if (trend === 'bearish' && isBase && volShrinking && highs.length >= 3) {
-    const olderHigh = highs[highs.length - 3]
-    if (lastHigh <= olderHigh * 1.02) {
-      return { phase: 'Distribution', description: 'Price ranging after markup with lower highs — distribution underway' }
-    }
-  }
+function detectMarketPhase(
+  structure: StructureState,
+  currentPrice: number,
+  bullishPercent: number,
+): PhaseResult {
+  const { bias, consecutiveBOS, cleanSequence, rangeHigh, rangeLow } = structure
+  const rangePos = rangeHigh > rangeLow
+    ? (currentPrice - rangeLow) / (rangeHigh - rangeLow)
+    : 0.5
+  const isBull = bias === 'bullish'
+  const isBear = bias === 'bearish'
 
-  if (trend === 'bearish' && bb < 0 && hh <= 0) {
-    return { phase: 'Markdown', description: `Lower lows (${Math.abs(bb).toFixed(1)}%) with lower highs — impulsive markdown phase` }
-  }
+  if (isBull && consecutiveBOS >= 2 && rangePos > 0.55 && bullishPercent > 65)
+    return { phase: 'Markup', description: `Strong bullish BOS ×${consecutiveBOS} — impulsive markup` }
 
-  if (trend === 'bearish' && isBase && volShrinking && lows.length >= 3) {
-    const olderLow = lows[lows.length - 3]
-    if (lastLow <= olderLow * 1.02) {
-      return { phase: 'Distribution', description: 'Range-bound after uptrend — distribution to new participants' }
-    }
-  }
+  if (isBull && consecutiveBOS >= 2 && cleanSequence && rangePos < 0.45 && bullishPercent > 55)
+    return { phase: 'Reaccumulation', description: 'Bullish structure, price at range low — reaccumulation before continuation' }
 
-  if (trend === 'neutral') {
-    if (volShrinking) return { phase: 'Neutral', description: 'Contracting volatility — market indecision' }
-    if (volExpanding) return { phase: 'Neutral', description: 'Expanding volatility — directional move imminent' }
-    return { phase: 'Neutral', description: 'No clear structural bias' }
-  }
+  if (isBull && rangePos < 0.40 && bullishPercent > 45)
+    return { phase: 'Accumulation', description: 'Price basing near range low with bullish bias — accumulation underway' }
 
-  return { phase: 'Neutral', description: 'Mixed signals across timeframes' }
+  if (isBear && rangePos > 0.60 && bullishPercent < 45 && consecutiveBOS >= 1)
+    return { phase: 'Distribution', description: 'Bearish structure, price near range high — distribution underway' }
+
+  if (isBear && bullishPercent < 35 && rangePos > 0.55)
+    return { phase: 'Markdown', description: 'Strong bearish structure — markdown phase' }
+
+  if (bullishPercent > 75 && isBull)
+    return { phase: 'Reaccumulation', description: 'Overwhelming bullish conviction' }
+
+  if (bullishPercent < 25 && isBear)
+    return { phase: 'Markdown', description: 'Overwhelming bearish conviction' }
+
+  return { phase: 'Neutral', description: 'Mixed signals — no clear phase' }
 }
 
 function computeConviction(
@@ -258,11 +258,11 @@ function computeConviction(
   adx: number,
   chop: number,
   trend: string,
-  timeframe: 'intraday' | 'daily',
+  timeframe: 'intraday' | 'daily' | 'context',
 ): 'high' | 'medium' | 'low' {
   if (trend === 'neutral') return 'low'
 
-  const chopLimit = timeframe === 'daily' ? 0.6 : 0.5
+  const chopLimit = timeframe === 'intraday' ? 0.5 : 0.6
   if (chop > chopLimit) return 'low'
   if (adx < 18) return 'low'
 
@@ -325,80 +325,80 @@ function computeCandleFlowScore(candles: Candle[]): number {
   return totalFlow === 0 ? 50 : (bullFlow / totalFlow) * 100
 }
 
-export function computePeriodData(candles: Candle[], timeframe: 'intraday' | 'daily' = 'intraday'): PeriodSentiment {
+export function computePeriodData(candles: Candle[], timeframe: 'intraday' | 'daily' | 'context' = 'intraday'): PeriodSentiment {
   const swings = detectSwingPoints(candles)
   const rsiValues = computeRSI(candles)
   const divergences = detectDivergence(candles, swings, rsiValues)
 
   const { bosEvents, chochEvents, structureScore, trend } = analyzeStructure(candles, swings)
+  const structureState = computeStructureState(swings, bosEvents, chochEvents, trend, candles)
   const { status: emaStatus, score: emaScore } = computeEmaStatus(candles)
   const momentumScore = computeMomentumScore(candles)
   const chop = computeChopIndex(candles)
   const { adx } = computeADX(candles)
-  const phase = detectPhase(candles, swings, trend)
   const change24h = computeChange24h(candles)
 
   // Candle flow analysis (buying/selling pressure from wick positions)
   const flowScore = computeCandleFlowScore(candles)
 
-  // Blend: structure (50%) + momentum (25%) + EMA (10%) + candleFlow (15%)
-  let finalRaw = structureScore * 0.50 + momentumScore * 0.25 + emaScore * 0.10 + flowScore * 0.15
-
-  // Strong trend multiplier: when structure is decisive, amplify further
-  if (structureScore < 25) {
-    finalRaw = 50 - (50 - finalRaw) * 1.2
-  } else if (structureScore > 75) {
-    finalRaw = 50 + (finalRaw - 50) * 1.2
-  }
-
-  // ADX boost: strong trends amplify
-  if (adx > 22) {
-    const adxBoost = Math.min((adx - 22) * 0.6, 15)
-    if (trend === 'bullish') finalRaw += adxBoost
-    else if (trend === 'bearish') finalRaw -= adxBoost
-  }
-
-  // Divergence boost/penalty
-  for (const div of divergences) {
-    const divStrength = div.strength === 'strong' ? 12 : 6
-    switch (div.type) {
-      case 'regular_bullish': finalRaw += divStrength; break
-      case 'regular_bearish': finalRaw -= divStrength; break
-      case 'hidden_bullish': finalRaw += divStrength * 0.6; break
-      case 'hidden_bearish': finalRaw -= divStrength * 0.6; break
-    }
-  }
-
-  // Chop dampener
-  const chopLimit = timeframe === 'daily' ? 0.6 : 0.5
-  if (chop > chopLimit) {
-    const dampen = Math.min((chop - chopLimit) * 2, 1)
-    finalRaw = 50 + (finalRaw - 50) * (1 - dampen)
-  }
-
-  finalRaw = Math.max(0, Math.min(100, finalRaw))
-
-  // Exponential amplification to match reference extremes
-  const normalized = (finalRaw - 50) / 50
-  const sign = normalized >= 0 ? 1 : -1
-  const amplified = sign * Math.pow(Math.abs(normalized), 0.35)
-  const amplifiedRaw = 50 + amplified * 50
-
-  let bullPct: number
-  let bearPct: number
-  if (amplifiedRaw >= 50) {
-    bullPct = Math.round(((amplifiedRaw - 50) / 50) * 100)
-    bearPct = 100 - bullPct
+  let finalRaw: number
+  if (timeframe === 'context') {
+    finalRaw = computeContextScore(candles)
   } else {
-    bearPct = Math.round(((50 - amplifiedRaw) / 50) * 100)
-    bullPct = 100 - bearPct
+    finalRaw = structureScore * 0.50 + momentumScore * 0.25 + emaScore * 0.10 + flowScore * 0.15
+
+    // Strong trend multiplier: when structure is decisive, amplify further
+    if (structureScore < 25) {
+      finalRaw = 50 - (50 - finalRaw) * 1.2
+    } else if (structureScore > 75) {
+      finalRaw = 50 + (finalRaw - 50) * 1.2
+    }
+
+    // ADX boost: strong trends amplify
+    if (adx > 22) {
+      const adxBoost = Math.min((adx - 22) * 0.6, 15)
+      if (trend === 'bullish') finalRaw += adxBoost
+      else if (trend === 'bearish') finalRaw -= adxBoost
+    }
+
+    // Divergence boost/penalty
+    for (const div of divergences) {
+      const divStrength = div.strength === 'strong' ? 12 : 6
+      switch (div.type) {
+        case 'regular_bullish': finalRaw += divStrength; break
+        case 'regular_bearish': finalRaw -= divStrength; break
+        case 'hidden_bullish': finalRaw += divStrength * 0.6; break
+        case 'hidden_bearish': finalRaw -= divStrength * 0.6; break
+      }
+    }
+
+    // Chop dampener
+    const chopLimit = timeframe === 'daily' ? 0.6 : 0.5
+    if (chop > chopLimit) {
+      const dampen = Math.min((chop - chopLimit) * 2, 1)
+      finalRaw = 50 + (finalRaw - 50) * (1 - dampen)
+    }
+
+    finalRaw = Math.max(0, Math.min(100, finalRaw))
+
+    // Exponential amplification to match reference extremes
+    const normalized = (finalRaw - 50) / 50
+    const sign = normalized >= 0 ? 1 : -1
+    const amplified = sign * Math.pow(Math.abs(normalized), 0.35)
+    finalRaw = 50 + amplified * 50
+    finalRaw = Math.max(0, Math.min(100, finalRaw))
   }
+
+  let bullPct = Math.round(finalRaw)
+  let bearPct = 100 - bullPct
   bullPct = Math.max(0, Math.min(100, bullPct))
   bearPct = Math.max(0, Math.min(100, bearPct))
 
   const conviction = computeConviction(structureScore, momentumScore, emaScore, flowScore, adx, chop, trend, timeframe)
 
   const lastPrice = candles.length > 0 ? candles[candles.length - 1].close : 0
+
+  const phase = detectMarketPhase(structureState, lastPrice, bullPct)
 
   const swingHighs = swings.filter(s => s.type === 'high').map(s => ({
     price: s.price, index: s.index, timestamp: s.timestamp
@@ -428,16 +428,19 @@ export function computePeriodData(candles: Candle[], timeframe: 'intraday' | 'da
   }
 }
 
-export function mergeTimeframes(intraday: PeriodSentiment, daily: PeriodSentiment): {
+export function mergeTimeframes(
+  intraday: PeriodSentiment,
+  daily: PeriodSentiment,
+  threeDay?: PeriodSentiment,
+): {
   overallTrend: 'bullish' | 'bearish' | 'neutral'
   overallConviction: 'high' | 'medium' | 'low'
 } {
-  const intraWeight = 0.4
-  const dailyWeight = 0.6
-
+  const context = threeDay || daily
   const intraBull = intraday.bullPct / 100
   const dailyBull = daily.bullPct / 100
-  const weightedBull = intraBull * intraWeight + dailyBull * dailyWeight
+  const contextBull = context.bullPct / 100
+  const weightedBull = intraBull * 0.20 + dailyBull * 0.40 + contextBull * 0.40
 
   let overallTrend: 'bullish' | 'bearish' | 'neutral'
   if (weightedBull > 0.6) overallTrend = 'bullish'
@@ -445,7 +448,7 @@ export function mergeTimeframes(intraday: PeriodSentiment, daily: PeriodSentimen
   else overallTrend = 'neutral'
 
   const convScores = { high: 3, medium: 2, low: 1 }
-  const avgConv = (convScores[intraday.conviction] + convScores[daily.conviction]) / 2
+  const avgConv = (convScores[intraday.conviction] + convScores[daily.conviction] + convScores[context.conviction]) / 3
   let overallConviction: 'high' | 'medium' | 'low'
   if (avgConv >= 2.5) overallConviction = 'high'
   else if (avgConv >= 1.5) overallConviction = 'medium'

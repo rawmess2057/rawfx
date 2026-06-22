@@ -23,6 +23,32 @@ export function getEMAs(candles: Candle[]): { ema5: number[]; ema9: number[]; em
   }
 }
 
+export function computeContextScore(candles: Candle[]): number {
+  if (candles.length < 20) return 50
+  const closes = candles.map(c => c.close)
+  const price = closes[closes.length - 1]
+
+  const ema5_arr = computeEMA(closes, 5)
+  const ema10_arr = computeEMA(closes, 10)
+  const ema20_arr = computeEMA(closes, 20)
+
+  const emas = [
+    { val: ema5_arr[ema5_arr.length - 1], prev: ema5_arr[ema5_arr.length - 2], weight: 0.50 },
+    { val: ema10_arr[ema10_arr.length - 1], prev: ema10_arr[ema10_arr.length - 2], weight: 0.30 },
+    { val: ema20_arr[ema20_arr.length - 1], prev: ema20_arr[ema20_arr.length - 2], weight: 0.20 },
+  ]
+
+  let totalScore = 0
+  for (const { val: ema, prev, weight } of emas) {
+    const diff = (price - ema) / price
+    const slope = (ema - prev) / prev
+    const raw = Math.max(-1, Math.min(1, diff * 2 + slope * 50))
+    totalScore += raw * weight
+  }
+
+  return Math.round(Math.max(0, Math.min(100, 50 + totalScore * 50)))
+}
+
 export function computeEmaStatus(candles: Candle[]): { status: 'bullish' | 'bearish' | 'mixed'; score: number } {
   if (candles.length < 21) return { status: 'mixed', score: 50 }
   const closes = candles.map(c => c.close)

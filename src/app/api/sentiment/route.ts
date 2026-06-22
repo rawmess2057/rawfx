@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { fetchOHLCV, fetchSparkline } from '@/lib/data-fetcher'
 import { computePeriodData, mergeTimeframes } from '@/lib/sentiment'
+import { aggregateCandles } from '@/lib/candle-utils'
 import { findSymbol } from '@/constants/symbols'
 import { PeriodSentiment, SentimentResult } from '@/lib/types'
 
@@ -38,10 +39,13 @@ export async function POST(req: NextRequest) {
             throw new Error(`Insufficient data for ${displaySymbol}`)
           }
 
+          const candles5d = aggregateCandles(candles1d, 5)
+
           // Use 15m as primary intraday, merge with 1h for robustness
           const intraday15m = candles15m.length >= 20 ? computePeriodData(candles15m, 'intraday') : null
           const intraday1h = candles1h.length >= 20 ? computePeriodData(candles1h, 'intraday') : null
           const daily = computePeriodData(candles1d, 'daily')
+          const threeDay = candles5d.length >= 10 ? computePeriodData(candles5d, 'context') : daily
 
           let intraday: PeriodSentiment
           if (intraday15m && intraday1h) {
@@ -63,7 +67,7 @@ export async function POST(req: NextRequest) {
             intraday = intraday15m || intraday1h || daily
           }
 
-          const { overallTrend, overallConviction } = mergeTimeframes(intraday, daily)
+          const { overallTrend, overallConviction } = mergeTimeframes(intraday, daily, threeDay)
 
           const price = daily.lastPrice || intraday.lastPrice
 
@@ -71,6 +75,7 @@ export async function POST(req: NextRequest) {
             symbol: displaySymbol,
             intraday,
             daily,
+            threeDay,
             overallTrend,
             overallConviction,
             price,

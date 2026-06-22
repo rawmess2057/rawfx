@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useCallback, useRef } from 'react'
+import { useEffect, useCallback, useRef, useState } from 'react'
 import { useStore } from '@/store/useStore'
 import { UNIQUE_SYMBOLS } from '@/constants/symbols'
 import SearchBar from './SearchBar'
@@ -17,12 +17,8 @@ export default function Dashboard() {
 
   const hasWatchlist = watchlist.length > 0
   const fetchingRef = useRef(false)
-
-  useEffect(() => {
-    if (watchlist.length === 0 && UNIQUE_SYMBOLS.length > 0) {
-      UNIQUE_SYMBOLS.forEach(s => addSymbol(s.symbol))
-    }
-  }, [])
+  const [ready, setReady] = useState(false)
+  const autoRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const fetchBatch = useCallback(async (symbols: string[]) => {
     try {
@@ -58,8 +54,34 @@ export default function Dashboard() {
   }, [watchlist, fetchBatch, setLoading, setError])
 
   useEffect(() => {
-    if (hasWatchlist) fetchAll()
-  }, [hasWatchlist])
+    // Phase 1: load hardcoded symbols
+    for (const s of UNIQUE_SYMBOLS) {
+      addSymbol(s.symbol)
+    }
+
+    // Phase 2: fetch crypto list, then start
+    fetch('/api/symbols/crypto')
+      .then(r => r.json())
+      .then(data => {
+        if (data.symbols && Array.isArray(data.symbols)) {
+          for (const s of data.symbols) {
+            addSymbol(s.symbol)
+          }
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        setReady(true)
+      })
+  }, [])
+
+  useEffect(() => {
+    if (!ready || !hasWatchlist) return
+    fetchAll()
+
+    autoRef.current = setInterval(fetchAll, 60_000)
+    return () => { if (autoRef.current) clearInterval(autoRef.current) }
+  }, [ready, hasWatchlist])
 
   const resultArray = watchlist
     .map(s => results[s])

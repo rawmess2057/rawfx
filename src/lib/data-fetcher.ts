@@ -35,7 +35,7 @@ function parseInterval(timeframe: '15m' | '1h' | '1d'): { interval: string; peri
   switch (timeframe) {
     case '15m': return { interval: '15m', period1: new Date(now - 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] }
     case '1h': return { interval: '60m', period1: new Date(now - 25 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] }
-    case '1d': return { interval: '1d', period1: new Date(now - 80 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] }
+    case '1d': return { interval: '1d', period1: new Date(now - 200 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] }
   }
 }
 

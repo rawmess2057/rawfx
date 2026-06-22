@@ -4,7 +4,7 @@ import { PhaseResult } from '@/lib/types'
 
 interface Props {
   phase: PhaseResult
-  size?: 'sm' | 'md'
+  size?: 'xs' | 'sm' | 'md'
 }
 
 const colors: Record<string, string> = {
@@ -16,16 +16,27 @@ const colors: Record<string, string> = {
   Neutral: 'text-[#94a3b8] bg-white/5',
 }
 
+const shortNames: Record<string, string> = {
+  Accumulation: 'Acc',
+  Reaccumulation: 'Reacc',
+  Markup: 'Markup',
+  Distribution: 'Dist',
+  Markdown: 'Mdown',
+  Neutral: 'Neut',
+}
+
 export default function PhaseLabel({ phase, size = 'sm' }: Props) {
   const color = colors[phase.phase] || colors.Neutral
-  const textSize = size === 'sm' ? 'text-[11px]' : 'text-xs'
+  const textSize = size === 'xs' ? 'text-[9px]' : size === 'sm' ? 'text-[11px]' : 'text-xs'
+  const padding = size === 'xs' ? 'px-1.5 py-0.5' : 'px-2 py-0.5'
+  const display = size === 'xs' ? (shortNames[phase.phase] || phase.phase) : phase.phase
 
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-md font-semibold ${textSize} ${color}`}
+      className={`inline-flex items-center ${padding} rounded-md font-semibold ${textSize} ${color}`}
       title={phase.description}
     >
-      {phase.phase}
+      {display}
     </span>
   )
 }

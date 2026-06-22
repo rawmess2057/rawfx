@@ -14,7 +14,7 @@ interface Props {
   onRemove: (symbol: string) => void
 }
 
-type SortCol = 'symbol' | 'intraday' | 'daily' | 'trend' | null
+type SortCol = 'symbol' | 'intraday' | 'daily' | 'threeDay' | 'trend' | null
 type SortDir = 'asc' | 'desc' | 'random'
 
 const trendOrder = { bullish: 3, neutral: 2, bearish: 1 }
@@ -42,6 +42,7 @@ export default function SentimentTable({ results, selected, onSelect, onRemove }
       if (sortCol === 'symbol') cmp = a.symbol.localeCompare(b.symbol)
       else if (sortCol === 'intraday') cmp = a.intraday.bullPct - b.intraday.bullPct
       else if (sortCol === 'daily') cmp = a.daily.bullPct - b.daily.bullPct
+      else if (sortCol === 'threeDay') cmp = a.threeDay.bullPct - b.threeDay.bullPct
       else if (sortCol === 'trend') cmp = trendOrder[a.overallTrend] - trendOrder[b.overallTrend]
       return sortDir === 'desc' ? -cmp : cmp
     })
@@ -80,10 +81,13 @@ export default function SentimentTable({ results, selected, onSelect, onRemove }
             <th className="text-left py-3 px-3 w-44 cursor-pointer select-none hover:text-[#94a3b8] transition-colors" onClick={() => handleSort('daily')}>
               Daily{sortIcon('daily')}
             </th>
+            <th className="text-left py-3 px-3 w-44 cursor-pointer select-none hover:text-[#94a3b8] transition-colors" onClick={() => handleSort('threeDay')}>
+              Context{sortIcon('threeDay')}
+            </th>
             <th className="text-left py-3 px-3 w-24 cursor-pointer select-none hover:text-[#94a3b8] transition-colors" onClick={() => handleSort('trend')}>
               Trend{sortIcon('trend')}
             </th>
-            <th className="text-left py-3 px-3 w-24">Phase</th>
+            <th className="text-left py-3 px-3 w-44">Phase</th>
             <th className="text-right py-3 px-3 w-8"></th>
           </tr>
         </thead>
@@ -146,20 +150,37 @@ export default function SentimentTable({ results, selected, onSelect, onRemove }
                 </td>
 
                 <td className="py-3 px-3">
+                  <div className="flex flex-col gap-1">
+                    <div className="flex justify-between text-[10px] font-semibold">
+                      <span className="text-[#f43f5e]">{r.threeDay.bearPct}%</span>
+                      <span className="text-[#14f5c7]">{r.threeDay.bullPct}%</span>
+                    </div>
+                    <SentimentBar bullPct={r.threeDay.bullPct} bearPct={r.threeDay.bearPct} size="sm" />
+                  </div>
+                </td>
+
+                <td className="py-3 px-3">
                   <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${
                     r.overallTrend === 'bullish' ? 'text-[#14f5c7]' :
-                    r.overallTrend === 'bearish' ? 'text-[#f43f5e]' : 'text-[#94a3b8]'
+                    r.overallTrend === 'bearish' ? 'text-[#f43f5e]' : 'text-[#facc15]'
                   }`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${
                       r.overallTrend === 'bullish' ? 'bg-[#14f5c7]' :
-                      r.overallTrend === 'bearish' ? 'bg-[#f43f5e]' : 'bg-[#475569]'
+                      r.overallTrend === 'bearish' ? 'bg-[#f43f5e]' : 'bg-[#facc15]'
                     }`} />
-                    {r.overallTrend === 'bullish' ? 'Bullish' : r.overallTrend === 'bearish' ? 'Bearish' : 'Neutral'}
+                    {r.overallTrend === 'bullish' ? 'Bullish' : r.overallTrend === 'bearish' ? 'Bearish' : "Sidelined"}
                   </span>
                 </td>
 
                 <td className="py-3 px-3">
-                  <PhaseLabel phase={r.daily.phase} size="sm" />
+                  <div className="flex items-center gap-1">
+                    <span className="text-[8px] text-[#475569] font-semibold w-3 shrink-0">I</span>
+                    <PhaseLabel phase={r.intraday.phase} size="xs" />
+                    <span className="text-[8px] text-[#475569] font-semibold w-3 shrink-0 ml-1">D</span>
+                    <PhaseLabel phase={r.daily.phase} size="xs" />
+                    <span className="text-[8px] text-[#475569] font-semibold w-3 shrink-0 ml-1">C</span>
+                    <PhaseLabel phase={r.threeDay.phase} size="xs" />
+                  </div>
                 </td>
 
                 <td className="py-3 px-3 text-right">

@@ -24,6 +24,14 @@ export interface StructureEvent {
   description: string
 }
 
+export interface StructureState {
+  bias: 'bullish' | 'bearish' | 'neutral'
+  consecutiveBOS: number
+  cleanSequence: boolean
+  rangeHigh: number
+  rangeLow: number
+}
+
 export interface PhaseResult {
   phase: 'Accumulation' | 'Reaccumulation' | 'Markup' | 'Distribution' | 'Markdown' | 'Neutral'
   description: string
@@ -53,6 +61,7 @@ export interface SentimentResult {
   symbol: string
   intraday: PeriodSentiment
   daily: PeriodSentiment
+  threeDay: PeriodSentiment
   overallTrend: 'bullish' | 'bearish' | 'neutral'
   overallConviction: 'high' | 'medium' | 'low'
   price: number
