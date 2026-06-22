@@ -1,13 +1,13 @@
 'use client'
 
-import { useEffect, useCallback, useRef, useState } from 'react'
+import { useEffect, useCallback, useRef, useState, useMemo } from 'react'
 import { useStore } from '@/store/useStore'
 import { UNIQUE_SYMBOLS } from '@/constants/symbols'
 import SearchBar from './SearchBar'
 import SentimentTable from './SentimentTable'
 
-const BATCH_SIZE = 20
-const BATCH_DELAY = 300
+const BATCH_SIZE = 10
+const BATCH_DELAY = 500
 
 export default function Dashboard() {
   const {
@@ -19,6 +19,7 @@ export default function Dashboard() {
   const fetchingRef = useRef(false)
   const [ready, setReady] = useState(false)
   const autoRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
 
   const fetchBatch = useCallback(async (symbols: string[]) => {
     try {
@@ -54,12 +55,19 @@ export default function Dashboard() {
   }, [watchlist, fetchBatch, setLoading, setError])
 
   useEffect(() => {
-    // Phase 1: load hardcoded symbols
+    // Already hydrated from localStorage — skip initial population
+    if (watchlist.length > 0) {
+      setReady(true)
+      return
+    }
+
+    // Phase 1: load hardcoded symbols (skip crypto — live API handles them)
     for (const s of UNIQUE_SYMBOLS) {
+      if (s.category === 'crypto') continue
       addSymbol(s.symbol)
     }
 
-    // Phase 2: fetch crypto list, then start
+    // Phase 2: fetch crypto list
     fetch('/api/symbols/crypto')
       .then(r => r.json())
       .then(data => {
@@ -79,7 +87,7 @@ export default function Dashboard() {
     if (!ready || !hasWatchlist) return
     fetchAll()
 
-    autoRef.current = setInterval(fetchAll, 60_000)
+    autoRef.current = setInterval(fetchAll, 180_000)
     return () => { if (autoRef.current) clearInterval(autoRef.current) }
   }, [ready, hasWatchlist])
 
@@ -87,12 +95,18 @@ export default function Dashboard() {
     .map(s => results[s])
     .filter((r): r is NonNullable<typeof r> => r != null)
 
+  const filteredResults = useMemo(() => {
+    if (!searchQuery) return resultArray
+    const q = searchQuery.toLowerCase()
+    return resultArray.filter(r => r.symbol.toLowerCase().includes(q))
+  }, [resultArray, searchQuery])
+
   return (
     <div className="flex h-[calc(100vh-49px)]">
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Bar */}
         <header className="glass border-b border-white/5 px-6 py-3.5 flex items-center gap-4 shrink-0">
-          <SearchBar onSelect={addSymbol} />
+          <SearchBar value={searchQuery} onChange={setSearchQuery} />
 
           <div className="flex items-center gap-3 ml-auto">
             <div className="flex items-center gap-2 text-xs text-[#475569]">
@@ -143,10 +157,14 @@ export default function Dashboard() {
             <div className="flex items-center justify-center flex-1 text-sm text-[#475569]">
               No symbols loaded. Search and add symbols to begin.
             </div>
+          ) : filteredResults.length === 0 ? (
+            <div className="flex items-center justify-center flex-1 text-sm text-[#475569]">
+              No symbols match "{searchQuery}"
+            </div>
           ) : (
             <div className="glass rounded-xl flex-1 flex flex-col min-h-0 overflow-clip">
               <SentimentTable
-                results={resultArray}
+                results={filteredResults}
                 selected={selectedSymbol}
                 onSelect={setSelected}
                 onRemove={removeSymbol}
@@ -157,7 +175,9 @@ export default function Dashboard() {
           <div className="mt-4 text-[10px] text-[#475569] text-center">
             {isLoading
               ? `Fetching ${resultArray.length}/${watchlist.length} symbols...`
-              : `Auto-refreshes every 60s · ${resultArray.length} symbols loaded · Data: Yahoo Finance`}
+              : searchQuery
+                ? `${filteredResults.length}/${resultArray.length} symbols · filtered`
+                : `Auto-refreshes every 60s · ${resultArray.length} symbols loaded · Data: Yahoo Finance`}
           </div>
         </div>
       </div>

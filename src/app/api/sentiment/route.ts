@@ -19,8 +19,8 @@ export async function POST(req: NextRequest) {
     const results: SentimentResult[] = []
 
     // Process in parallel batches to avoid rate limits
-    const batchSize = 10
-    const batchDelay = 200
+    const batchSize = 5
+    const batchDelay = 500
     for (let i = 0; i < symbols.length; i += batchSize) {
       const batch = symbols.slice(i, i + batchSize)
       const batchResults = await Promise.allSettled(
@@ -28,61 +28,67 @@ export async function POST(req: NextRequest) {
           const def = findSymbol(symbol)
           const displaySymbol = def?.display || symbol
 
-          const [candles15m, candles1h, candles1d, sparkline] = await Promise.all([
-            fetchOHLCV(symbol, '15m'),
-            fetchOHLCV(symbol, '1h'),
-            fetchOHLCV(symbol, '1d'),
-            fetchSparkline(symbol),
-          ])
+          const processSymbol = async () => {
+            const [candles15m, candles1h, candles1d, sparkline] = await Promise.all([
+              fetchOHLCV(symbol, '15m'),
+              fetchOHLCV(symbol, '1h'),
+              fetchOHLCV(symbol, '1d'),
+              fetchSparkline(symbol),
+            ])
 
-          if (candles15m.length < 20 && candles1h.length < 20 && candles1d.length < 10) {
-            throw new Error(`Insufficient data for ${displaySymbol}`)
-          }
-
-          const candles5d = aggregateCandles(candles1d, 5)
-
-          // Use 15m as primary intraday, merge with 1h for robustness
-          const intraday15m = candles15m.length >= 20 ? computePeriodData(candles15m, 'intraday') : null
-          const intraday1h = candles1h.length >= 20 ? computePeriodData(candles1h, 'intraday') : null
-          const daily = computePeriodData(candles1d, 'daily')
-          const threeDay = candles5d.length >= 10 ? computePeriodData(candles5d, 'context') : daily
-
-          let intraday: PeriodSentiment
-          if (intraday15m && intraday1h) {
-            const mergedTrend: 'bullish' | 'bearish' | 'neutral' =
-              intraday15m.bullPct > 55 || intraday1h.bullPct > 55
-                ? 'bullish'
-                : intraday15m.bearPct > 55 || intraday1h.bearPct > 55
-                  ? 'bearish'
-                  : 'neutral'
-            intraday = {
-              ...intraday1h,
-              bullPct: Math.round(intraday15m.bullPct * 0.6 + intraday1h.bullPct * 0.4),
-              bearPct: Math.round(intraday15m.bearPct * 0.6 + intraday1h.bearPct * 0.4),
-              momentumScore: Math.round(intraday15m.momentumScore * 0.6 + intraday1h.momentumScore * 0.4),
-              adx: Math.round(intraday15m.adx * 0.6 + intraday1h.adx * 0.4),
-              trend: mergedTrend,
+            if (candles15m.length < 20 && candles1h.length < 20 && candles1d.length < 10) {
+              throw new Error(`Insufficient data for ${displaySymbol}`)
             }
-          } else {
-            intraday = intraday15m || intraday1h || daily
+
+            const candles5d = aggregateCandles(candles1d, 5)
+
+            const intraday15m = candles15m.length >= 20 ? computePeriodData(candles15m, 'intraday') : null
+            const intraday1h = candles1h.length >= 20 ? computePeriodData(candles1h, 'intraday') : null
+            const daily = computePeriodData(candles1d, 'daily')
+            const threeDay = candles5d.length >= 10 ? computePeriodData(candles5d, 'context') : daily
+
+            let intraday: PeriodSentiment
+            if (intraday15m && intraday1h) {
+              const mergedTrend: 'bullish' | 'bearish' | 'neutral' =
+                intraday15m.bullPct > 55 || intraday1h.bullPct > 55
+                  ? 'bullish'
+                  : intraday15m.bearPct > 55 || intraday1h.bearPct > 55
+                    ? 'bearish'
+                    : 'neutral'
+              intraday = {
+                ...intraday1h,
+                bullPct: Math.round(intraday15m.bullPct * 0.6 + intraday1h.bullPct * 0.4),
+                bearPct: Math.round(intraday15m.bearPct * 0.6 + intraday1h.bearPct * 0.4),
+                momentumScore: Math.round(intraday15m.momentumScore * 0.6 + intraday1h.momentumScore * 0.4),
+                adx: Math.round(intraday15m.adx * 0.6 + intraday1h.adx * 0.4),
+                trend: mergedTrend,
+              }
+            } else {
+              intraday = intraday15m || intraday1h || daily
+            }
+
+            const { overallTrend, overallConviction } = mergeTimeframes(intraday, daily, threeDay)
+
+            const price = daily.lastPrice || intraday.lastPrice
+
+            return {
+              symbol: displaySymbol,
+              intraday,
+              daily,
+              threeDay,
+              overallTrend,
+              overallConviction,
+              price,
+              change24h: daily.change24h || intraday.change24h || 0,
+              sparklineData: sparkline,
+              lastUpdated: Date.now(),
+            } satisfies SentimentResult
           }
 
-          const { overallTrend, overallConviction } = mergeTimeframes(intraday, daily, threeDay)
-
-          const price = daily.lastPrice || intraday.lastPrice
-
-          return {
-            symbol: displaySymbol,
-            intraday,
-            daily,
-            threeDay,
-            overallTrend,
-            overallConviction,
-            price,
-            change24h: daily.change24h || intraday.change24h || 0,
-            sparklineData: sparkline,
-            lastUpdated: Date.now(),
-          } satisfies SentimentResult
+          const timeout = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error(`Timeout processing ${displaySymbol}`)), 12000)
+          )
+          return Promise.race([processSymbol(), timeout])
         })
       )
 
