@@ -21,6 +21,14 @@ export default function Dashboard() {
 
   const [searchQuery, setSearchQuery] = useState('')
 
+  useEffect(() => {
+    const VERSION = 'rawfx-v1'
+    if (localStorage.getItem('rawfx-version') !== VERSION) {
+      localStorage.removeItem('rawfx-watchlist')
+      localStorage.setItem('rawfx-version', VERSION)
+    }
+  }, [])
+
   const fetchBatch = useCallback(async (symbols: string[]) => {
     try {
       const res = await fetch('/api/sentiment', {
