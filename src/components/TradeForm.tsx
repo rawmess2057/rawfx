@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { JournalTrade } from '@/lib/journal-types'
 
 type InitTrade = Partial<JournalTrade> & Record<string, unknown>
@@ -97,12 +97,12 @@ export default function TradeForm({ initial, onSave, onClose }: Props) {
 
           {/* Screenshots */}
           <div>
-            <h3 className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-2">Screenshots (URLs)</h3>
+            <h3 className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-2">Screenshots</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <Field label="Context" value={form.contextScreenshot} onChange={v => set('contextScreenshot', v)} />
-              <Field label="Validation" value={form.validationScreenshot} onChange={v => set('validationScreenshot', v)} />
-              <Field label="Entry" value={form.entryScreenshot} onChange={v => set('entryScreenshot', v)} />
-              <Field label="Final" value={form.finalScreenshot} onChange={v => set('finalScreenshot', v)} />
+              <ScreenshotField label="Context" value={form.contextScreenshot} onChange={v => set('contextScreenshot', v)} />
+              <ScreenshotField label="Validation" value={form.validationScreenshot} onChange={v => set('validationScreenshot', v)} />
+              <ScreenshotField label="Entry" value={form.entryScreenshot} onChange={v => set('entryScreenshot', v)} />
+              <ScreenshotField label="Final" value={form.finalScreenshot} onChange={v => set('finalScreenshot', v)} />
             </div>
           </div>
 
@@ -163,6 +163,62 @@ function Field({ label, value, onChange, type = 'text', required, step }: {
         step={step}
         className="w-full bg-transparent border border-white/5 rounded-lg px-2.5 py-1.5 text-xs text-[#f1f5f9] focus:outline-none focus:border-[#a855f7]"
       />
+    </div>
+  )
+}
+
+function ScreenshotField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => onChange(reader.result as string)
+    reader.readAsDataURL(file)
+  }
+
+  return (
+    <div>
+      <label className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider block mb-1">{label}</label>
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder="Paste URL or upload..."
+          className="flex-1 w-full bg-transparent border border-white/5 rounded-lg px-2.5 py-1.5 text-xs text-[#f1f5f9] placeholder:text-[#475569] focus:outline-none focus:border-[#a855f7]"
+        />
+        <input ref={inputRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          className="glass rounded-lg px-2 py-1.5 text-xs text-[#94a3b8] hover:text-[#f1f5f9] hover:bg-white/5 transition-all shrink-0"
+        >
+          Browse
+        </button>
+        {value && (
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            className="text-[#475569] hover:text-[#f43f5e] transition-colors shrink-0"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
+      </div>
+      {value && (
+        <div className="mt-1.5 relative inline-block">
+          <img
+            src={value}
+            alt={label}
+            className="max-h-16 rounded border border-white/5 object-contain"
+            onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+          />
+        </div>
+      )}
     </div>
   )
 }
