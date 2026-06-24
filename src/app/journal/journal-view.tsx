@@ -259,7 +259,7 @@ function TradeDetailPanel({ trade, onClose }: { trade: JournalTrade; onClose: ()
   const resultColor = result === 'win' ? 'text-[#14f5c7]' : result === 'loss' ? 'text-[#f43f5e]' : 'text-[#f59e0b]'
 
   return (
-    <div className="w-[400px] border-l border-white/5 bg-[var(--bg-primary)] flex flex-col min-h-0 overflow-hidden animate-slide-in-right">
+    <div className="w-[500px] border-l border-white/5 bg-[var(--bg-primary)] flex flex-col min-h-0 overflow-hidden animate-slide-in-right">
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 shrink-0">
         <div className="flex items-center gap-3">
@@ -278,7 +278,7 @@ function TradeDetailPanel({ trade, onClose }: { trade: JournalTrade; onClose: ()
         {!hasScreenshots ? (
           <div className="text-xs text-[#475569] text-center py-8">No screenshots for this trade.</div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-4">
             {labels.map(([key, label]) => {
               const src = trade[key] as string
               if (!src) return null
@@ -288,8 +288,7 @@ function TradeDetailPanel({ trade, onClose }: { trade: JournalTrade; onClose: ()
                   <img
                     src={src}
                     alt={label}
-                    className="w-full rounded-lg border border-white/5 object-contain bg-black/20"
-                    style={{ maxHeight: 180 }}
+                  className="w-full rounded-lg border border-white/5 object-contain bg-black/20"
                     onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
                   />
                 </div>
