@@ -22,6 +22,7 @@ export default function JournalView() {
   const [tab, setTab] = useState<'entry' | 'analysis'>('entry')
   const [formOpen, setFormOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [selectedTrade, setSelectedTrade] = useState<JournalTrade | null>(null)
 
   async function handleSave(trade: JournalTrade) {
     if (editingId) {
@@ -170,7 +171,7 @@ export default function JournalView() {
                       <tbody>
                         {trades.map(t => {
                           return (
-                            <tr key={t.id} className="border-b border-white/[0.02] hover:bg-white/[0.02] transition-colors">
+                            <tr key={t.id} onClick={() => setSelectedTrade(t)} className="border-b border-white/[0.02] hover:bg-white/[0.04] transition-colors cursor-pointer">
                               <td className="py-2.5 px-3">
                                 <span className={`text-xs ${t.includeInAnalysis ? 'text-[#14f5c7]' : 'text-[#475569]'}`}>
                                   {t.includeInAnalysis ? 'Yes' : 'No'}
@@ -201,12 +202,12 @@ export default function JournalView() {
                               </td>
                               <td className="py-2.5 px-3 text-right">
                                 <div className="flex items-center gap-1 justify-end">
-                                  <button onClick={() => handleEdit(t)} className="text-[#475569] hover:text-[#94a3b8] transition-colors p-0.5">
+                                  <button onClick={e => { e.stopPropagation(); handleEdit(t) }} className="text-[#475569] hover:text-[#94a3b8] transition-colors p-0.5">
                                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                       <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                     </svg>
                                   </button>
-                                  <button onClick={() => { if (confirm('Delete trade?')) deleteTrade(t.id) }} className="text-[#475569] hover:text-[#f43f5e] transition-colors p-0.5">
+                                  <button onClick={e => { e.stopPropagation(); if (confirm('Delete trade?')) deleteTrade(t.id) }} className="text-[#475569] hover:text-[#f43f5e] transition-colors p-0.5">
                                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
@@ -234,6 +235,67 @@ export default function JournalView() {
             onSave={handleSave}
             onClose={() => { setFormOpen(false); setEditingId(null) }}
           />
+        )}
+      </div>
+
+      {/* Trade Detail Panel */}
+      {selectedTrade && (
+        <TradeDetailPanel trade={selectedTrade} onClose={() => setSelectedTrade(null)} />
+      )}
+    </div>
+  )
+}
+
+function TradeDetailPanel({ trade, onClose }: { trade: JournalTrade; onClose: () => void }) {
+  const labels: [keyof JournalTrade, string][] = [
+    ['contextScreenshot', 'Context'],
+    ['validationScreenshot', 'Validation'],
+    ['entryScreenshot', 'Entry'],
+    ['finalScreenshot', 'Final'],
+  ]
+  const hasScreenshots = labels.some(([key]) => trade[key] as string)
+
+  const result = classifyResult(trade.rrSecured)
+  const resultColor = result === 'win' ? 'text-[#14f5c7]' : result === 'loss' ? 'text-[#f43f5e]' : 'text-[#f59e0b]'
+
+  return (
+    <div className="w-[400px] border-l border-white/5 bg-[var(--bg-primary)] flex flex-col min-h-0 overflow-hidden animate-slide-in-right">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 shrink-0">
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-bold text-[#f1f5f9]">{trade.symbol}</span>
+          <span className={`text-[10px] font-semibold uppercase ${resultColor}`}>{result}</span>
+        </div>
+        <button onClick={onClose} className="text-[#475569] hover:text-[#f43f5e] transition-colors">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Screenshots */}
+      <div className="flex-1 overflow-auto p-5 space-y-4">
+        {!hasScreenshots ? (
+          <div className="text-xs text-[#475569] text-center py-8">No screenshots for this trade.</div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {labels.map(([key, label]) => {
+              const src = trade[key] as string
+              if (!src) return null
+              return (
+                <div key={key}>
+                  <p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-1.5">{label}</p>
+                  <img
+                    src={src}
+                    alt={label}
+                    className="w-full rounded-lg border border-white/5 object-contain bg-black/20"
+                    style={{ maxHeight: 180 }}
+                    onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                  />
+                </div>
+              )
+            })}
+          </div>
         )}
       </div>
     </div>
