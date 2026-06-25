@@ -22,6 +22,9 @@ interface YFInstance {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let yfCache: any = null
 
+const CACHE_TTL = 60_000
+const ohlcvCache = new Map<string, { data: Candle[]; ts: number }>()
+
 async function getYF(): Promise<YFInstance> {
   if (!yfCache) {
     const YahooFinance = (await import('yahoo-finance2')).default
@@ -40,6 +43,12 @@ function parseInterval(timeframe: '15m' | '1h' | '1d'): { interval: string; peri
 }
 
 export async function fetchOHLCV(symbol: string, timeframe: '15m' | '1h' | '1d'): Promise<Candle[]> {
+  const cacheKey = `${symbol}:${timeframe}`
+  const cached = ohlcvCache.get(cacheKey)
+  if (cached && Date.now() - cached.ts < CACHE_TTL) {
+    return cached.data
+  }
+
   const def = findSymbol(symbol)
   const ticker = def?.yahooTicker || symbol
   const { interval, period1 } = parseInterval(timeframe)
@@ -62,6 +71,7 @@ export async function fetchOHLCV(symbol: string, timeframe: '15m' | '1h' | '1d')
       })
     }
 
+    ohlcvCache.set(cacheKey, { data: candles, ts: Date.now() })
     return candles
   } catch (err) {
     console.error(`[data-fetcher] Error fetching ${ticker} (${timeframe}):`, err)

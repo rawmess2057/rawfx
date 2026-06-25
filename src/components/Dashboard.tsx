@@ -6,8 +6,7 @@ import { UNIQUE_SYMBOLS } from '@/constants/symbols'
 import SearchBar from './SearchBar'
 import SentimentTable from './SentimentTable'
 
-const BATCH_SIZE = 5
-const BATCH_DELAY = 2000
+const BATCH_SIZE = 20
 
 export default function Dashboard() {
   const {
@@ -49,11 +48,6 @@ export default function Dashboard() {
     for (let i = 0; i < validSymbols.length; i += BATCH_SIZE) {
       const batch = validSymbols.slice(i, i + BATCH_SIZE)
       await fetchBatch(batch)
-      if (i + BATCH_SIZE < validSymbols.length) {
-        if (i + BATCH_SIZE >= 10) {
-          await new Promise(r => setTimeout(r, BATCH_DELAY))
-        }
-      }
     }
 
     fetchingRef.current = false
