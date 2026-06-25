@@ -5,6 +5,7 @@ import { useJournalStore } from '@/store/journalStore'
 import { JournalTrade, classifyResult } from '@/lib/journal-types'
 import TradeForm from '@/components/TradeForm'
 import AnalysisTab from '@/components/AnalysisTab'
+import ImageViewer from '@/components/ImageViewer'
 
 const defaultTrade: Omit<JournalTrade, 'id'> = {
   includeInAnalysis: true, symbol: '', date: '', time: '', stopLoss: 0, rrSecured: 0,
@@ -247,6 +248,7 @@ export default function JournalView() {
 }
 
 function TradeDetailPanel({ trade, onClose }: { trade: JournalTrade; onClose: () => void }) {
+  const [fullScreenImg, setFullScreenImg] = useState<string | null>(null)
   const labels: [keyof JournalTrade, string][] = [
     ['contextScreenshot', 'Context'],
     ['validationScreenshot', 'Validation'],
@@ -288,7 +290,8 @@ function TradeDetailPanel({ trade, onClose }: { trade: JournalTrade; onClose: ()
                   <img
                     src={src}
                     alt={label}
-                  className="w-full rounded-lg border border-white/5 object-contain bg-black/20"
+                  className="w-full rounded-lg border border-white/5 object-contain bg-black/20 cursor-pointer"
+                    onClick={() => setFullScreenImg(src)}
                     onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
                   />
                 </div>
@@ -297,6 +300,10 @@ function TradeDetailPanel({ trade, onClose }: { trade: JournalTrade; onClose: ()
           </div>
         )}
       </div>
+
+      {fullScreenImg && (
+        <ImageViewer src={fullScreenImg} onClose={() => setFullScreenImg(null)} />
+      )}
     </div>
   )
 }
