@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useJournalStore } from '@/store/journalStore'
-import { JournalTrade, classifyResult } from '@/lib/journal-types'
+import { JournalTrade, classifyResult, getTradeStatus } from '@/lib/journal-types'
 import TradeForm from '@/components/TradeForm'
 import AnalysisTab from '@/components/AnalysisTab'
 import ImageViewer from '@/components/ImageViewer'
@@ -51,13 +51,15 @@ export default function JournalView() {
   }
 
   function handleExportCSV() {
-    const headers = ['Symbol','Date','Time','Stop Loss','RR Secured','Duration','Max RR','Result','Include?']
+    const headers = ['Symbol','Date','Time','Status','Stop Loss','RR Secured','Duration','Max RR','Result','Include?']
     const rows = trades.map(t => {
       const res = classifyResult(t.rrSecured)
+      const status = getTradeStatus(t)
       return [
-        t.symbol, t.date, t.time, t.stopLoss, t.rrSecured,
+        t.symbol, t.date, t.time, status,
+        t.stopLoss, t.rrSecured,
         t.durationCandles ?? '', t.maxRR ?? '',
-        res === 'win' ? 'Win' : res === 'loss' ? 'Loss' : 'BE',
+        status === 'running' ? '—' : res === 'win' ? 'Win' : res === 'loss' ? 'Loss' : 'BE',
         t.includeInAnalysis ? 'Yes' : 'No',
       ]
     })
@@ -173,6 +175,7 @@ export default function JournalView() {
                           <th className="text-left py-2.5 px-3 w-20">Symbol</th>
                           <th className="text-left py-2.5 px-3 w-24">Date</th>
                           <th className="text-left py-2.5 px-3 w-16">Time</th>
+                          <th className="text-left py-2.5 px-3 w-20">Status</th>
                           <th className="text-right py-2.5 px-3 w-20">SL</th>
                           <th className="text-right py-2.5 px-3 w-20">RR</th>
                           <th className="text-right py-2.5 px-3 w-20">Result</th>
@@ -193,6 +196,25 @@ export default function JournalView() {
                               </td>
                               <td className="py-2.5 px-3 text-xs text-[#94a3b8]">{t.date}</td>
                               <td className="py-2.5 px-3 text-xs text-[#94a3b8]">{t.time}</td>
+                              <td className="py-2.5 px-3">
+                                {(() => {
+                                  const status = getTradeStatus(t)
+                                  return (
+                                    <span className={`inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase ${
+                                      status === 'running' ? 'text-[#14f5c7]' : 'text-[#475569]'
+                                    }`}>
+                                      {status === 'running' ? (
+                                        <span className="w-1.5 h-1.5 rounded-full bg-[#14f5c7] animate-pulse" />
+                                      ) : (
+                                        <svg className="w-2.5 h-2.5" viewBox="0 0 16 16" fill="currentColor">
+                                          <path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" />
+                                        </svg>
+                                      )}
+                                      {status}
+                                    </span>
+                                  )
+                                })()}
+                              </td>
                               <td className="py-2.5 px-3 text-right text-xs text-[#94a3b8]">{t.stopLoss}</td>
                               <td className={`py-2.5 px-3 text-right text-xs font-semibold ${
                                 t.rrSecured > 0 ? 'text-[#14f5c7]' : t.rrSecured < 0 ? 'text-[#f43f5e]' : 'text-[#94a3b8]'
@@ -201,6 +223,10 @@ export default function JournalView() {
                               </td>
                               <td className="py-2.5 px-3 text-right">
                                 {(() => {
+                                  const status = getTradeStatus(t)
+                                  if (status === 'running') {
+                                    return <span className="text-[10px] font-semibold uppercase text-[#475569]">—</span>
+                                  }
                                   const res = classifyResult(t.rrSecured)
                                   return (
                                     <span className={`text-[10px] font-semibold uppercase ${
@@ -270,6 +296,7 @@ export default function JournalView() {
 
 function TradeDetailPanel({ trade, onClose }: { trade: JournalTrade; onClose: () => void }) {
   const [fullScreenImg, setFullScreenImg] = useState<string | null>(null)
+  const tradeStatus = getTradeStatus(trade)
   const labels: [keyof JournalTrade, string][] = [
     ['contextScreenshot', 'Context'],
     ['validationScreenshot', 'Validation'],
@@ -287,6 +314,18 @@ function TradeDetailPanel({ trade, onClose }: { trade: JournalTrade; onClose: ()
       <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 shrink-0">
         <div className="flex items-center gap-3">
           <span className="text-sm font-bold text-[#f1f5f9]">{trade.symbol}</span>
+          <span className={`inline-flex items-center gap-1 text-[10px] font-semibold uppercase ${
+            tradeStatus === 'running' ? 'text-[#14f5c7]' : 'text-[#475569]'
+          }`}>
+            {tradeStatus === 'running' ? (
+              <span className="w-1.5 h-1.5 rounded-full bg-[#14f5c7] animate-pulse" />
+            ) : (
+              <svg className="w-2.5 h-2.5" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" />
+              </svg>
+            )}
+            {tradeStatus}
+          </span>
           <span className={`text-[10px] font-semibold uppercase ${resultColor}`}>{result}</span>
         </div>
         <button onClick={onClose} className="text-[#475569] hover:text-[#f43f5e] transition-colors">

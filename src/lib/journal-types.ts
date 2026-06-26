@@ -1,4 +1,9 @@
 export type TradeResult = 'win' | 'be' | 'loss'
+export type TradeStatus = 'running' | 'completed'
+
+export function getTradeStatus(t: { finalScreenshot: string }): TradeStatus {
+  return t.finalScreenshot ? 'completed' : 'running'
+}
 
 export function classifyResult(rr: number): TradeResult {
   if (rr > 0) return 'win'
