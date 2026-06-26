@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useCallback } from 'react'
+import { useEffect, useRef } from 'react'
 
 interface ConfirmDialogProps {
   open: boolean
@@ -18,16 +18,20 @@ export default function ConfirmDialog({
   confirmLabel = 'Confirm', cancelLabel = 'Cancel',
   onConfirm, onCancel, variant = 'default',
 }: ConfirmDialogProps) {
-  const handleKey = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'Escape') onCancel()
-    if (e.key === 'Enter') onConfirm()
-  }, [onConfirm, onCancel])
+  const onConfirmRef = useRef(onConfirm)
+  const onCancelRef = useRef(onCancel)
+  onConfirmRef.current = onConfirm
+  onCancelRef.current = onCancel
 
   useEffect(() => {
     if (!open) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCancelRef.current()
+      if (e.key === 'Enter') onConfirmRef.current()
+    }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [open, handleKey])
+  }, [open])
 
   if (!open) return null
 
