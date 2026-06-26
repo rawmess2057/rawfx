@@ -18,7 +18,7 @@ const defaultTrade: Omit<JournalTrade, 'id'> = {
 }
 
 export default function JournalView() {
-  const { trades, config, addTrade, updateTrade, deleteTrade, setConfig, importTrades, fetchTrades, loading } = useJournalStore()
+  const { trades, config, addTrade, updateTrade, deleteTrade, setConfig, importTrades, fetchTrades, loading, _hydrated } = useJournalStore()
 
   useEffect(() => { fetchTrades() }, [fetchTrades])
   const [tab, setTab] = useState<'entry' | 'analysis'>('entry')
@@ -98,11 +98,19 @@ export default function JournalView() {
             </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-            <ConfigField label="Balance" value={config.accountBalance} onChange={v => setConfig({ accountBalance: Number(v) })} prefix="$" />
-            <ConfigField label="Risk %" value={config.riskPercent} onChange={v => setConfig({ riskPercent: Number(v) })} suffix="%" />
-            <ConfigField label="Entry TF (min)" value={config.entryTimeframeMin} onChange={v => setConfig({ entryTimeframeMin: Number(v) })} />
-            <ConfigField label="Costs (R)" value={config.costsPerTrade} onChange={v => setConfig({ costsPerTrade: Number(v) })} />
-            <ConfigField label="Max Loss %" value={config.maxLossPercent} onChange={v => setConfig({ maxLossPercent: Number(v) })} suffix="%" />
+            {!_hydrated ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="animate-pulse h-[52px] bg-white/[0.03] rounded-lg" />
+              ))
+            ) : (
+              <>
+                <ConfigField label="Balance" value={config.accountBalance} onChange={v => setConfig({ accountBalance: Number(v) })} prefix="$" />
+                <ConfigField label="Risk %" value={config.riskPercent} onChange={v => setConfig({ riskPercent: Number(v) })} suffix="%" />
+                <ConfigField label="Entry TF (min)" value={config.entryTimeframeMin} onChange={v => setConfig({ entryTimeframeMin: Number(v) })} />
+                <ConfigField label="Costs (R)" value={config.costsPerTrade} onChange={v => setConfig({ costsPerTrade: Number(v) })} />
+                <ConfigField label="Max Loss %" value={config.maxLossPercent} onChange={v => setConfig({ maxLossPercent: Number(v) })} suffix="%" />
+              </>
+            )}
           </div>
         </div>
 

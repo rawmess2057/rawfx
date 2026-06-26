@@ -9,6 +9,7 @@ interface JournalState {
   config: JournalConfig
   loading: boolean
   error: string | null
+  _hydrated: boolean
   fetchTrades: () => Promise<void>
   addTrade: (trade: JournalTrade) => Promise<void>
   updateTrade: (id: string, trade: Partial<JournalTrade>) => Promise<void>
@@ -33,6 +34,7 @@ export const useJournalStore = create<JournalState>()(
       config: { ...defaultConfig },
       loading: false,
       error: null,
+      _hydrated: false,
 
       fetchTrades: async () => {
         set({ loading: true, error: null })
@@ -119,6 +121,11 @@ export const useJournalStore = create<JournalState>()(
     {
       name: 'rawfx-journal-config',
       partialize: (state) => ({ config: state.config }),
+      merge: (persistedState, currentState) => ({
+        ...currentState,
+        ...(persistedState as Partial<JournalState>),
+        _hydrated: true,
+      }),
     }
   )
 )
