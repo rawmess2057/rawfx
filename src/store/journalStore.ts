@@ -124,11 +124,15 @@ export const useJournalStore = create<JournalState>()(
     {
       name: 'rawfx-journal-config',
       partialize: (state) => ({ config: state.config }),
-      merge: (persistedState, currentState) => ({
-        ...currentState,
-        ...(persistedState as Partial<JournalState>),
-        _hydrated: true,
-      }),
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as Partial<JournalState>
+        return {
+          ...currentState,
+          ...persisted,
+          config: { ...defaultConfig, ...persisted.config },
+          _hydrated: true,
+        }
+      },
     }
   )
 )
