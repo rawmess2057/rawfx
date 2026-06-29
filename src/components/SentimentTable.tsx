@@ -14,7 +14,7 @@ interface Props {
   onRemove: (symbol: string) => void
 }
 
-type SortCol = 'symbol' | 'intraday' | 'daily' | 'threeDay' | 'trend' | null
+type SortCol = 'symbol' | 'intraday' | 'daily' | 'threeDay' | 'trend' | 'change' | null
 type SortDir = 'asc' | 'desc' | 'random'
 
 const trendOrder = { bullish: 3, neutral: 2, bearish: 1 }
@@ -44,6 +44,7 @@ export default function SentimentTable({ results, selected, onSelect, onRemove }
       else if (sortCol === 'daily') cmp = a.daily.bullPct - b.daily.bullPct
       else if (sortCol === 'threeDay') cmp = a.threeDay.bullPct - b.threeDay.bullPct
       else if (sortCol === 'trend') cmp = trendOrder[a.overallTrend] - trendOrder[b.overallTrend]
+      else if (sortCol === 'change') cmp = a.change24h - b.change24h
       return sortDir === 'desc' ? -cmp : cmp
     })
   }, [results, sortCol, sortDir, randomSeed])
@@ -102,7 +103,7 @@ export default function SentimentTable({ results, selected, onSelect, onRemove }
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03, duration: 0.2 }}
-                onClick={() => onSelect(r.symbol)}
+                onClick={() => { onSelect(r.symbol); setSortCol('change'); setSortDir('desc') }}
                 className={`border-b border-white/[0.02] cursor-pointer transition-all duration-150 ${
                   isSelected
                     ? 'bg-[#a855f7]/5 border-l-2 border-l-[#a855f7]'
