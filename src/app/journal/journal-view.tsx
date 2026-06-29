@@ -14,7 +14,6 @@ const defaultTrade: Omit<JournalTrade, 'id'> = {
   contextScreenshot: '', validationScreenshot: '', entryScreenshot: '', finalScreenshot: '',
   notes: '', criteria1: false, criteria2: false, criteria3: false, criteria4: false, criteria5: false,
   metOverallPlan: false, criteriaNotes: '', news: '', newsNotes: '', models: '', extra: '',
-  contextTimeframe: '', validationTimeframe: '', entryTimeframe: '',
 }
 
 export default function JournalView() {
@@ -101,18 +100,37 @@ export default function JournalView() {
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
             {!_hydrated ? (
-              Array.from({ length: 5 }).map((_, i) => (
+              Array.from({ length: 7 }).map((_, i) => (
                 <div key={i} className="animate-pulse h-[52px] bg-white/[0.03] rounded-lg" />
               ))
             ) : (
               <>
                 <ConfigField label="Balance" value={config.accountBalance} onChange={v => setConfig({ accountBalance: Number(v) })} prefix="$" />
                 <ConfigField label="Risk %" value={config.riskPercent} onChange={v => setConfig({ riskPercent: Number(v) })} suffix="%" />
-                <ConfigField label="Entry TF (min)" value={config.entryTimeframeMin} onChange={v => setConfig({ entryTimeframeMin: Number(v) })} />
+                <ConfigField label="Context TF" value={config.contextTimeframe} onChange={v => setConfig({ contextTimeframe: v })} type="text" />
+                <ConfigField label="Validation TF" value={config.validationTimeframe} onChange={v => setConfig({ validationTimeframe: v })} type="text" />
+                <ConfigField label="Entry TF" value={config.entryTimeframe} onChange={v => setConfig({ entryTimeframe: v })} type="text" />
                 <ConfigField label="Costs (R)" value={config.costsPerTrade} onChange={v => setConfig({ costsPerTrade: Number(v) })} />
                 <ConfigField label="Max Loss %" value={config.maxLossPercent} onChange={v => setConfig({ maxLossPercent: Number(v) })} suffix="%" />
               </>
             )}
+          </div>
+
+          {/* Criteria Labels */}
+          <div className="mt-3 grid grid-cols-5 gap-3">
+            {config.criteriaLabels.map((label, i) => (
+              <ConfigField
+                key={i}
+                label={`Criteria ${i + 1}`}
+                value={label}
+                onChange={v => {
+                  const next = [...config.criteriaLabels] as [string, string, string, string, string]
+                  next[i] = v
+                  setConfig({ criteriaLabels: next })
+                }}
+                type="text"
+              />
+            ))}
           </div>
         </div>
 
@@ -271,6 +289,7 @@ export default function JournalView() {
             initial={editingId ? trades.find(t => t.id === editingId) ?? defaultTrade : defaultTrade}
             onSave={handleSave}
             onClose={() => { setFormOpen(false); setEditingId(null) }}
+            criteriaLabels={config.criteriaLabels}
           />
         )}
 
@@ -368,8 +387,8 @@ function TradeDetailPanel({ trade, onClose }: { trade: JournalTrade; onClose: ()
   )
 }
 
-function ConfigField({ label, value, onChange, prefix, suffix }: {
-  label: string; value: number; onChange: (v: string) => void; prefix?: string; suffix?: string
+function ConfigField({ label, value, onChange, prefix, suffix, type = 'number' }: {
+  label: string; value: string | number; onChange: (v: string) => void; prefix?: string; suffix?: string; type?: string
 }) {
   return (
     <div>
@@ -377,7 +396,7 @@ function ConfigField({ label, value, onChange, prefix, suffix }: {
       <div className="flex items-center gap-1">
         {prefix && <span className="text-xs text-[#475569]">{prefix}</span>}
         <input
-          type="number"
+          type={type}
           value={value}
           onChange={e => onChange(e.target.value)}
           className="w-full bg-transparent border border-white/5 rounded-lg px-2 py-1 text-xs text-[#f1f5f9] focus:outline-none focus:border-[#a855f7]"

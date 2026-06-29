@@ -22,10 +22,12 @@ export default function AnalysisTab() {
       {/* Config Summary */}
       <div className="glass rounded-xl p-2">
         <p className="text-[9px] font-semibold text-[#475569] uppercase tracking-wider mb-1">Account Config</p>
-        <div className="grid grid-cols-3 md:grid-cols-7 gap-1 text-[10px]">
+        <div className="grid grid-cols-4 md:grid-cols-8 gap-1 text-[10px]">
           <div><span className="text-[#475569]">Balance: </span><span className="text-[#f1f5f9]">${config.accountBalance.toLocaleString()}</span></div>
           <div><span className="text-[#475569]">Risk: </span><span className="text-[#f1f5f9]">{config.riskPercent}%</span></div>
-          <div><span className="text-[#475569]">Entry TF: </span><span className="text-[#f1f5f9]">{config.entryTimeframeMin}min</span></div>
+          <div><span className="text-[#475569]">Context TF: </span><span className="text-[#f1f5f9]">{config.contextTimeframe}</span></div>
+          <div><span className="text-[#475569]">Validation TF: </span><span className="text-[#f1f5f9]">{config.validationTimeframe}</span></div>
+          <div><span className="text-[#475569]">Entry TF: </span><span className="text-[#f1f5f9]">{config.entryTimeframe}</span></div>
           <div><span className="text-[#475569]">Costs: </span><span className="text-[#f1f5f9]">{config.costsPerTrade}R</span></div>
 
           <div><span className="text-[#475569]">Max Loss: </span><span className="text-[#f1f5f9]">{config.maxLossPercent}%</span></div>

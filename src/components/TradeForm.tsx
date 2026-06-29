@@ -9,9 +9,10 @@ interface Props {
   initial: InitTrade
   onSave: (trade: JournalTrade) => void
   onClose: () => void
+  criteriaLabels: string[]
 }
 
-export default function TradeForm({ initial, onSave, onClose }: Props) {
+export default function TradeForm({ initial, onSave, onClose, criteriaLabels }: Props) {
   const { durationCandles: initDur, maxRR: initRR, ...rest } = initial
   const [form, setForm] = useState({
     includeInAnalysis: true,
@@ -23,7 +24,6 @@ export default function TradeForm({ initial, onSave, onClose }: Props) {
     criteria1: false, criteria2: false, criteria3: false, criteria4: false, criteria5: false,
     metOverallPlan: false,
     criteriaNotes: '', news: '', newsNotes: '', models: '', extra: '',
-    contextTimeframe: '', validationTimeframe: '', entryTimeframe: '',
     ...rest,
   })
 
@@ -59,9 +59,7 @@ export default function TradeForm({ initial, onSave, onClose }: Props) {
       newsNotes: form.newsNotes,
       models: form.models,
       extra: form.extra,
-      contextTimeframe: form.contextTimeframe,
-      validationTimeframe: form.validationTimeframe,
-      entryTimeframe: form.entryTimeframe,
+
     }
     onSave(trade)
   }
@@ -110,18 +108,11 @@ export default function TradeForm({ initial, onSave, onClose }: Props) {
           <div>
             <h3 className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-2">Criteria</h3>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {[1,2,3,4,5].map(i => (
-                <Checkbox key={i} label={`Criteria ${i}`} checked={form[`criteria${i}` as keyof typeof form] as boolean} onChange={v => set(`criteria${i}` as keyof typeof form, v)} />
+              {criteriaLabels.map((label, i) => (
+                <Checkbox key={i} label={label} checked={form[`criteria${i + 1}` as keyof typeof form] as boolean} onChange={v => set(`criteria${i + 1}` as keyof typeof form, v)} />
               ))}
               <Checkbox label="Met Overall Plan?" checked={form.metOverallPlan} onChange={v => set('metOverallPlan', v)} />
             </div>
-          </div>
-
-          {/* Timeframes */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <Field label="Context TF" value={form.contextTimeframe} onChange={v => set('contextTimeframe', v)} />
-            <Field label="Validation TF" value={form.validationTimeframe} onChange={v => set('validationTimeframe', v)} />
-            <Field label="Entry TF" value={form.entryTimeframe} onChange={v => set('entryTimeframe', v)} />
           </div>
 
           {/* Notes */}

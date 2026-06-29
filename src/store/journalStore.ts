@@ -22,9 +22,12 @@ interface JournalState {
 const defaultConfig: JournalConfig = {
   accountBalance: 1_000_000,
   riskPercent: 0.5,
-  entryTimeframeMin: 30,
+  contextTimeframe: '1h',
+  validationTimeframe: '15m',
+  entryTimeframe: '5m',
   costsPerTrade: 0.1,
   maxLossPercent: 100,
+  criteriaLabels: ['Criteria 1', 'Criteria 2', 'Criteria 3', 'Criteria 4', 'Criteria 5'],
 }
 
 export const useJournalStore = create<JournalState>()(

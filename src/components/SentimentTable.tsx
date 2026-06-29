@@ -76,6 +76,9 @@ export default function SentimentTable({ results, selected, onSelect, onRemove }
             <th className="text-left py-3 px-3 w-28 cursor-pointer select-none hover:text-[#94a3b8] transition-colors" onClick={() => handleSort('symbol')}>
               Symbol{sortIcon('symbol')}
             </th>
+            <th className="text-left py-3 px-3 w-20 cursor-pointer select-none hover:text-[#94a3b8] transition-colors" onClick={() => handleSort('change')}>
+              24h Chg{sortIcon('change')}
+            </th>
             <th className="text-left py-3 px-3 w-44 cursor-pointer select-none hover:text-[#94a3b8] transition-colors" onClick={() => handleSort('intraday')}>
               Intraday{sortIcon('intraday')}
             </th>
@@ -103,7 +106,7 @@ export default function SentimentTable({ results, selected, onSelect, onRemove }
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03, duration: 0.2 }}
-                onClick={() => { onSelect(r.symbol); setSortCol('change'); setSortDir('desc') }}
+                onClick={() => onSelect(r.symbol)}
                 className={`border-b border-white/[0.02] cursor-pointer transition-all duration-150 ${
                   isSelected
                     ? 'bg-[#a855f7]/5 border-l-2 border-l-[#a855f7]'
@@ -119,15 +122,16 @@ export default function SentimentTable({ results, selected, onSelect, onRemove }
                       height={20}
                     />
                     <div>
-                      <div className="font-semibold text-[#f1f5f9] text-sm">{r.symbol}</div>
-                      <div className="text-[11px] text-[#475569]">
-                        {r.price.toFixed(2)}
-                        <span className={`ml-1 ${r.change24h >= 0 ? 'text-[#14f5c7]' : 'text-[#f43f5e]'}`}>
-                          {r.change24h >= 0 ? '+' : ''}{r.change24h.toFixed(2)}%
-                        </span>
-                      </div>
+                      <span className="font-semibold text-[#f1f5f9] text-sm cursor-pointer hover:text-[#a855f7] transition-colors" onClick={e => { e.stopPropagation(); handleSort('symbol') }}>{r.symbol}</span>
+                      <div className="text-[11px] text-[#475569]">{r.price.toFixed(2)}</div>
                     </div>
                   </div>
+                </td>
+
+                <td className="py-3 px-3">
+                  <span className={`text-xs font-semibold ${r.change24h >= 0 ? 'text-[#14f5c7]' : 'text-[#f43f5e]'}`}>
+                    {r.change24h >= 0 ? '+' : ''}{r.change24h.toFixed(2)}%
+                  </span>
                 </td>
 
                 <td className="py-3 px-3">

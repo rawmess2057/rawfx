@@ -80,9 +80,5 @@ model Trade {
   validationScreenshot String  @default("")
   entryScreenshot      String  @default("")
   finalScreenshot      String  @default("")
-  contextTimeframe     String  @default("")
-  validationTimeframe  String  @default("")
-  entryTimeframe       String  @default("")
-
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

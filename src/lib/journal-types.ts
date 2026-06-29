@@ -37,17 +37,17 @@ export interface JournalTrade {
   newsNotes: string
   models: string
   extra: string
-  contextTimeframe: string
-  validationTimeframe: string
-  entryTimeframe: string
 }
 
 export interface JournalConfig {
   accountBalance: number
   riskPercent: number
-  entryTimeframeMin: number
+  contextTimeframe: string
+  validationTimeframe: string
+  entryTimeframe: string
   costsPerTrade: number
   maxLossPercent: number
+  criteriaLabels: [string, string, string, string, string]
 }
 
 export interface JournalStats {
