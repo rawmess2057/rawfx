@@ -3,6 +3,8 @@
 import { useState, useRef, useMemo } from 'react'
 import { JournalTrade } from '@/lib/journal-types'
 import { searchSymbols } from '@/constants/symbols'
+import DatePicker from '@/components/DatePicker'
+import TimePicker from '@/components/TimePicker'
 import { useJournalStore } from '@/store/journalStore'
 
 type InitTrade = Partial<JournalTrade> & Record<string, unknown>
@@ -23,7 +25,7 @@ export default function TradeForm({ initial, onSave, onClose, criteriaLabels }: 
     maxRR: initRR != null ? String(initRR) : '',
     contextScreenshot: '', validationScreenshot: '', entryScreenshot: '', finalScreenshot: '',
     notes: '',
-    criteria1: false, criteria2: false, criteria3: false, criteria4: false, criteria5: false,
+    criteria1: false, criteria2: false, criteria3: false, criteria4: false,
     metOverallPlan: false,
     criteriaNotes: '', news: '', newsNotes: '', models: '', extra: '',
     ...rest,
@@ -54,7 +56,6 @@ export default function TradeForm({ initial, onSave, onClose, criteriaLabels }: 
       criteria2: form.criteria2,
       criteria3: form.criteria3,
       criteria4: form.criteria4,
-      criteria5: form.criteria5,
       metOverallPlan: form.metOverallPlan,
       criteriaNotes: form.criteriaNotes,
       news: form.news,
@@ -82,8 +83,8 @@ export default function TradeForm({ initial, onSave, onClose, criteriaLabels }: 
           {/* Row 1: Core */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <SymbolField value={form.symbol} onChange={v => set('symbol', v)} />
-            <Field label="Date" value={form.date} onChange={v => set('date', v)} type="date" />
-            <Field label="Time" value={form.time} onChange={v => set('time', v)} type="time" />
+            <DatePicker value={form.date} onChange={v => set('date', v)} />
+            <TimePicker value={form.time} onChange={v => set('time', v)} />
             <Field label="Stop Loss" value={form.stopLoss} onChange={v => set('stopLoss', v)} type="number" />
           </div>
 

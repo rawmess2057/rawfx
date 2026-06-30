@@ -10,7 +10,7 @@ const defaultConfig = {
   entryTimeframe: '5m',
   costsPerTrade: 0.1,
   maxLossPercent: 100,
-  criteriaLabels: ['Criteria 1', 'Criteria 2', 'Criteria 3', 'Criteria 4', 'Criteria 5'],
+  criteriaLabels: ['Criteria 1', 'Criteria 2', 'Criteria 3', 'Criteria 4'],
 }
 
 export async function GET() {

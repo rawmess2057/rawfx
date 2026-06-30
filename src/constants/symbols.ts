@@ -266,10 +266,16 @@ export function findSymbol(sym: string): SymbolDef | undefined {
 export function searchSymbols(query: string): SymbolDef[] {
   const q = query.toUpperCase()
   if (!q) return []
-  return UNIQUE_SYMBOLS.filter(
-    s =>
-      s.symbol.toUpperCase().includes(q) ||
-      s.display.toUpperCase().includes(q) ||
-      s.category.toUpperCase().includes(q)
-  ).slice(0, 10)
+  const normalized = q.replace(/[/.]/g, '')
+  return UNIQUE_SYMBOLS.filter(s => {
+    const sym = s.symbol.toUpperCase()
+    const display = s.display.toUpperCase()
+    return (
+      sym.includes(q) ||
+      display.includes(q) ||
+      s.category.toUpperCase().includes(q) ||
+      sym.replace(/[/.]/g, '').includes(normalized) ||
+      display.replace(/[/.]/g, '').includes(normalized)
+    )
+  }).slice(0, 10)
 }

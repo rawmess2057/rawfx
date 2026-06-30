@@ -14,7 +14,7 @@ const defaultTrade: Omit<JournalTrade, 'id'> = {
   includeInAnalysis: true, symbol: '', date: '', time: '', stopLoss: 0, rrSecured: 0,
   durationCandles: null, maxRR: null,
   contextScreenshot: '', validationScreenshot: '', entryScreenshot: '', finalScreenshot: '',
-  notes: '', criteria1: false, criteria2: false, criteria3: false, criteria4: false, criteria5: false,
+  notes: '', criteria1: false, criteria2: false, criteria3: false, criteria4: false,
   metOverallPlan: false, criteriaNotes: '', news: '', newsNotes: '', models: '', extra: '',
 }
 
@@ -27,6 +27,7 @@ export default function JournalView() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [selectedTrade, setSelectedTrade] = useState<JournalTrade | null>(null)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [configExpanded, setConfigExpanded] = useState(false)
 
   async function handleSave(trade: JournalTrade) {
     if (editingId) {
@@ -88,8 +89,8 @@ export default function JournalView() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-49px)]">
-      <div className="flex-1 flex flex-col min-h-0">
+    <div className="flex h-[calc(100vh-49px)] overflow-x-hidden">
+      <div className="flex-1 flex flex-col min-h-0 min-w-0">
         {/* Config Panel */}
         <div className="glass border-b border-white/5 px-6 py-3 shrink-0">
           <div className="flex items-center justify-between mb-2">
@@ -105,42 +106,53 @@ export default function JournalView() {
               <button onClick={handleImportJSON} className="text-[10px] font-semibold text-[#475569] hover:text-[#94a3b8] px-2 py-1 rounded glass-hover">Import</button>
               <button onClick={handleExportJSON} className="text-[10px] font-semibold text-[#475569] hover:text-[#94a3b8] px-2 py-1 rounded glass-hover">Export JSON</button>
               <button onClick={handleExportCSV} className="text-[10px] font-semibold text-[#475569] hover:text-[#94a3b8] px-2 py-1 rounded glass-hover">Export CSV</button>
+              <button
+                onClick={() => setConfigExpanded(!configExpanded)}
+                className="text-[#475569] hover:text-[#94a3b8] p-1 rounded glass-hover transition-all"
+                title={configExpanded ? 'Collapse' : 'Expand'}
+              >
+                <svg className={`w-3.5 h-3.5 transition-transform ${configExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
             </div>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-            {!_hydrated ? (
-              Array.from({ length: 7 }).map((_, i) => (
-                <div key={i} className="animate-pulse h-[52px] bg-white/[0.03] rounded-lg" />
-              ))
-            ) : (
-              <>
+
+          {!_hydrated ? (
+            <div className="animate-pulse h-[52px] bg-white/[0.03] rounded-lg" />
+          ) : (
+            <>
+              {/* Always visible fields */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                 <ConfigField label="Balance" value={config.accountBalance} onChange={v => setConfig({ accountBalance: Number(v) })} prefix="$" />
                 <ConfigField label="Risk %" value={config.riskPercent} onChange={v => setConfig({ riskPercent: Number(v) })} suffix="%" />
                 <ConfigField label="Context TF" value={config.contextTimeframe} onChange={v => setConfig({ contextTimeframe: v })} type="text" />
                 <ConfigField label="Validation TF" value={config.validationTimeframe} onChange={v => setConfig({ validationTimeframe: v })} type="text" />
                 <ConfigField label="Entry TF" value={config.entryTimeframe} onChange={v => setConfig({ entryTimeframe: v })} type="text" />
                 <ConfigField label="Costs (R)" value={config.costsPerTrade} onChange={v => setConfig({ costsPerTrade: Number(v) })} />
-                <ConfigField label="Max Loss %" value={config.maxLossPercent} onChange={v => setConfig({ maxLossPercent: Number(v) })} suffix="%" />
-              </>
-            )}
-          </div>
+              </div>
 
-          {/* Criteria Labels */}
-          <div className="mt-3 grid grid-cols-5 gap-3">
-            {config.criteriaLabels.map((label, i) => (
-              <ConfigField
-                key={i}
-                label={`Criteria ${i + 1}`}
-                value={label}
-                onChange={v => {
-                  const next = [...config.criteriaLabels] as [string, string, string, string, string]
-                  next[i] = v
-                  setConfig({ criteriaLabels: next })
-                }}
-                type="text"
-              />
-            ))}
-          </div>
+              {/* Collapsible section */}
+              {configExpanded && (
+                <div className="mt-3 grid grid-cols-5 gap-3">
+                  <ConfigField label="Max Loss %" value={config.maxLossPercent} onChange={v => setConfig({ maxLossPercent: Number(v) })} suffix="%" />
+                  {config.criteriaLabels.map((label, i) => (
+                    <ConfigField
+                      key={i}
+                      label={`Criteria ${i + 1}`}
+                      value={label}
+                      onChange={v => {
+                        const next = [...config.criteriaLabels] as [string, string, string, string]
+                        next[i] = v
+                        setConfig({ criteriaLabels: next })
+                      }}
+                      type="text"
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         {/* Tabs */}
