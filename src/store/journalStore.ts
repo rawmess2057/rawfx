@@ -71,6 +71,8 @@ export const useJournalStore = create<JournalState>()(
             if (created) journals = [created]
           }
 
+          fetch('/api/trades/adopt-orphans', { method: 'PATCH' }).catch(() => {})
+
           const { activeJournalId } = get()
           let targetId = activeJournalId
           if (!targetId || !journals.find(j => j.id === targetId)) {
@@ -275,6 +277,12 @@ export const useJournalStore = create<JournalState>()(
     }),
     {
       name: 'rawfx-journal-config',
+      version: 1,
+      migrate: (persisted, version) => {
+        if (version === 0) {
+        }
+        return persisted
+      },
       partialize: (state) => ({
         journals: state.journals,
         activeJournalId: state.activeJournalId,
@@ -285,6 +293,7 @@ export const useJournalStore = create<JournalState>()(
         return {
           ...currentState,
           ...persisted,
+          config: { ...defaultConfig, ...(persisted.config || {}) },
           _hydrated: true,
         }
       },
