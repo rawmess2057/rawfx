@@ -110,11 +110,6 @@ html, body {
   background: rgba(255, 255, 255, 0.15);
 }
 
-input[type="date"],
-input[type="time"] {
-  color-scheme: dark;
-}
-
 select {
   background-color: var(--bg-secondary);
   color: var(--text-primary);

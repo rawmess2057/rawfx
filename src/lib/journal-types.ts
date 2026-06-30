@@ -41,7 +41,6 @@ export interface JournalTrade {
   criteria2: boolean
   criteria3: boolean
   criteria4: boolean
-  criteria5: boolean
   metOverallPlan: boolean
   criteriaNotes: string
   news: string
@@ -58,7 +57,7 @@ export interface JournalConfig {
   entryTimeframe: string
   costsPerTrade: number
   maxLossPercent: number
-  criteriaLabels: [string, string, string, string, string]
+  criteriaLabels: [string, string, string, string]
 }
 
 export interface JournalStats {

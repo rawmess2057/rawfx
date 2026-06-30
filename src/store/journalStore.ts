@@ -12,7 +12,7 @@ const defaultConfig: JournalConfig = {
   entryTimeframe: '5m',
   costsPerTrade: 0.1,
   maxLossPercent: 100,
-  criteriaLabels: ['Criteria 1', 'Criteria 2', 'Criteria 3', 'Criteria 4', 'Criteria 5'],
+  criteriaLabels: ['Criteria 1', 'Criteria 2', 'Criteria 3', 'Criteria 4'],
 }
 
 interface JournalState {
@@ -277,11 +277,13 @@ export const useJournalStore = create<JournalState>()(
     }),
     {
       name: 'rawfx-journal-config',
-      version: 1,
-      migrate: (persisted, version) => {
-        if (version === 0) {
+      version: 2,
+      migrate: (persisted: unknown, version: number) => {
+        const state = persisted as { config?: { criteriaLabels?: string[] } }
+        if (version < 2 && state.config?.criteriaLabels && state.config.criteriaLabels.length > 4) {
+          state.config.criteriaLabels = state.config.criteriaLabels.slice(0, 4) as [string, string, string, string]
         }
-        return persisted
+        return state
       },
       partialize: (state) => ({
         journals: state.journals,
