@@ -53,7 +53,7 @@ export default function JournalSelector() {
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute top-full left-0 mt-1 w-72 glass rounded-xl shadow-2xl z-20 overflow-hidden">
+          <div className="absolute top-full left-0 mt-1 w-72 glass-green rounded-xl shadow-2xl z-20 overflow-hidden">
             <div className="max-h-64 overflow-auto">
               {journals.length === 0 ? (
                 <div className="px-3 py-4 text-xs text-[#475569] text-center">

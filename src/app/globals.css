@@ -32,6 +32,13 @@ html, body {
   border: 1px solid var(--border-glass);
 }
 
+.glass-green {
+  background: rgba(20, 245, 199, 0.08);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(20, 245, 199, 0.12);
+}
+
 .glass-hover:hover {
   background: var(--bg-card-hover);
   border-color: var(--border-glass-hover);
