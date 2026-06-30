@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { JournalTrade } from '@/lib/journal-types'
+import { searchSymbols } from '@/constants/symbols'
+import { useJournalStore } from '@/store/journalStore'
 
 type InitTrade = Partial<JournalTrade> & Record<string, unknown>
 
@@ -79,7 +81,7 @@ export default function TradeForm({ initial, onSave, onClose, criteriaLabels }: 
         <form onSubmit={handleSubmit} className="p-5 space-y-5">
           {/* Row 1: Core */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Field label="Symbol" value={form.symbol} onChange={v => set('symbol', v)} required />
+            <SymbolField value={form.symbol} onChange={v => set('symbol', v)} />
             <Field label="Date" value={form.date} onChange={v => set('date', v)} type="date" />
             <Field label="Time" value={form.time} onChange={v => set('time', v)} type="time" />
             <Field label="Stop Loss" value={form.stopLoss} onChange={v => set('stopLoss', v)} type="number" />
@@ -136,6 +138,63 @@ export default function TradeForm({ initial, onSave, onClose, criteriaLabels }: 
           </div>
         </form>
       </div>
+    </div>
+  )
+}
+
+function SymbolField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const [input, setInput] = useState(value)
+  const trades = useJournalStore(s => s.trades)
+
+  const tradeSymbols = useMemo(() => {
+    const set = new Set<string>()
+    trades.forEach(t => { if (t.symbol) set.add(t.symbol) })
+    return Array.from(set)
+  }, [trades])
+
+  const suggestions = useMemo(() => {
+    if (!input.trim()) return []
+    const seen = new Set<string>()
+    const result: string[] = []
+    searchSymbols(input).forEach(s => {
+      if (!seen.has(s.symbol)) { seen.add(s.symbol); result.push(s.symbol) }
+    })
+    tradeSymbols.forEach(s => {
+      if (!seen.has(s) && s.toUpperCase().includes(input.toUpperCase())) {
+        seen.add(s); result.push(s)
+      }
+    })
+    return result.slice(0, 10)
+  }, [input, tradeSymbols])
+
+  return (
+    <div className="relative">
+      <label className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider block mb-1">Symbol</label>
+      <input
+        type="text"
+        value={input}
+        required
+        onChange={e => { setInput(e.target.value); setOpen(true) }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onKeyDown={e => { if (e.key === 'Escape') setOpen(false) }}
+        className="w-full bg-transparent border border-white/5 rounded-lg px-2.5 py-1.5 text-xs text-[#f1f5f9] focus:outline-none focus:border-[#a855f7]"
+      />
+      {open && suggestions.length > 0 && (
+        <div className="absolute top-full left-0 mt-1 w-full glass-green rounded-lg shadow-2xl z-20 overflow-hidden">
+          {suggestions.map(sym => (
+            <button
+              key={sym}
+              type="button"
+              onClick={() => { setInput(sym); onChange(sym); setOpen(false) }}
+              className="w-full text-left px-2.5 py-1.5 text-xs text-[#f1f5f9] hover:bg-white/[0.06] transition-all"
+            >
+              {sym}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
