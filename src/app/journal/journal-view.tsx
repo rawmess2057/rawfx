@@ -5,6 +5,8 @@ import { useJournalStore } from '@/store/journalStore'
 import { JournalTrade, classifyResult, getTradeStatus } from '@/lib/journal-types'
 import TradeForm from '@/components/TradeForm'
 import AnalysisTab from '@/components/AnalysisTab'
+import JournalSelector from '@/components/JournalSelector'
+import JournalManage from '@/components/JournalManage'
 import ImageViewer from '@/components/ImageViewer'
 import ConfirmDialog from '@/components/ConfirmDialog'
 
@@ -17,10 +19,10 @@ const defaultTrade: Omit<JournalTrade, 'id'> = {
 }
 
 export default function JournalView() {
-  const { trades, config, addTrade, updateTrade, deleteTrade, setConfig, importTrades, fetchTrades, loading, _hydrated } = useJournalStore()
+  const { trades, config, activeJournalId, addTrade, updateTrade, deleteTrade, setConfig, importTrades, fetchJournals, loading, _hydrated } = useJournalStore()
 
-  useEffect(() => { fetchTrades() }, [fetchTrades])
-  const [tab, setTab] = useState<'entry' | 'analysis'>('entry')
+  useEffect(() => { fetchJournals() }, [fetchJournals])
+  const [tab, setTab] = useState<'entry' | 'analysis' | 'journals'>('entry')
   const [formOpen, setFormOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [selectedTrade, setSelectedTrade] = useState<JournalTrade | null>(null)
@@ -91,7 +93,14 @@ export default function JournalView() {
         {/* Config Panel */}
         <div className="glass border-b border-white/5 px-6 py-3 shrink-0">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-xs font-semibold text-[#475569] uppercase tracking-wider">Configuration</h2>
+            <div className="flex items-center gap-3">
+              <JournalSelector />
+              {activeJournalId && (
+                <span className="text-[10px] text-[#475569]">
+                  {trades.length} trade{trades.length !== 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               <button onClick={handleImportJSON} className="text-[10px] font-semibold text-[#475569] hover:text-[#94a3b8] px-2 py-1 rounded glass-hover">Import</button>
               <button onClick={handleExportJSON} className="text-[10px] font-semibold text-[#475569] hover:text-[#94a3b8] px-2 py-1 rounded glass-hover">Export JSON</button>
@@ -156,130 +165,150 @@ export default function JournalView() {
           >
             Analysis
           </button>
+          <button
+            onClick={() => setTab('journals')}
+            className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider border-b-2 transition-all ${
+              tab === 'journals'
+                ? 'text-[#14f5c7] border-[#14f5c7]'
+                : 'text-[#475569] border-transparent hover:text-[#94a3b8]'
+            }`}
+          >
+            Journals
+          </button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 flex flex-col p-6 pt-4 overflow-hidden min-h-0">
-          {tab === 'entry' ? (
-            <>
-              {/* Trade Table */}
-              <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-                <div className="flex items-center justify-between mb-3 shrink-0">
-                  <h2 className="text-xs font-semibold text-[#475569] uppercase tracking-wider">
-                    Trade Journal ({trades.length} entries)
-                  </h2>
-                  <button
-                    onClick={() => { setEditingId(null); setFormOpen(true) }}
-                    className="glass rounded-lg px-3 py-1.5 text-xs font-semibold text-[#94a3b8] hover:text-[#f1f5f9] hover:bg-white/5 transition-all"
-                  >
-                    + Add Trade
-                  </button>
-                </div>
-
-                {loading ? (
-                  <div className="glass rounded-xl flex items-center justify-center h-48 text-sm text-[#475569]">
-                    Loading trades...
-                  </div>
-                ) : trades.length === 0 ? (
-                  <div className="glass rounded-xl flex items-center justify-center h-48 text-sm text-[#475569]">
-                    No trades yet. Click &quot;+ Add Trade&quot; to begin.
-                  </div>
-                ) : (
-                  <div className="glass rounded-xl flex-1 overflow-auto min-h-0">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="text-[11px] font-semibold text-[#475569] uppercase tracking-wider border-b border-white/5 sticky top-0 z-10" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-                          <th className="text-left py-2.5 px-3 w-16">Incl</th>
-                          <th className="text-left py-2.5 px-3 w-20">Symbol</th>
-                          <th className="text-left py-2.5 px-3 w-24">Date</th>
-                          <th className="text-left py-2.5 px-3 w-16">Time</th>
-                          <th className="text-left py-2.5 px-3 w-20">Status</th>
-                          <th className="text-right py-2.5 px-3 w-20">SL</th>
-                          <th className="text-right py-2.5 px-3 w-20">RR</th>
-                          <th className="text-right py-2.5 px-3 w-20">Result</th>
-                          <th className="text-right py-2.5 px-3 w-8"></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {trades.map(t => {
-                          return (
-                            <tr key={t.id} onClick={() => setSelectedTrade(t)} className="border-b border-white/[0.02] hover:bg-white/[0.04] transition-colors cursor-pointer">
-                              <td className="py-2.5 px-3">
-                                <span className={`text-xs ${t.includeInAnalysis ? 'text-[#14f5c7]' : 'text-[#475569]'}`}>
-                                  {t.includeInAnalysis ? 'Yes' : 'No'}
-                                </span>
-                              </td>
-                              <td className="py-2.5 px-3">
-                                <span className="font-semibold text-[#f1f5f9] text-xs">{t.symbol}</span>
-                              </td>
-                              <td className="py-2.5 px-3 text-xs text-[#94a3b8]">{t.date}</td>
-                              <td className="py-2.5 px-3 text-xs text-[#94a3b8]">{t.time}</td>
-                              <td className="py-2.5 px-3">
-                                {(() => {
-                                  const status = getTradeStatus(t)
-                                  return (
-                                    <span className={`inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase ${
-                                      status === 'running' ? 'text-[#14f5c7]' : 'text-[#475569]'
-                                    }`}>
-                                      {status === 'running' ? (
-                                        <span className="w-1.5 h-1.5 rounded-full bg-[#14f5c7] animate-pulse" />
-                                      ) : (
-                                        <svg className="w-2.5 h-2.5" viewBox="0 0 16 16" fill="currentColor">
-                                          <path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" />
-                                        </svg>
-                                      )}
-                                      {status}
-                                    </span>
-                                  )
-                                })()}
-                              </td>
-                              <td className="py-2.5 px-3 text-right text-xs text-[#94a3b8]">{t.stopLoss}</td>
-                              <td className={`py-2.5 px-3 text-right text-xs font-semibold ${
-                                t.rrSecured > 0 ? 'text-[#14f5c7]' : t.rrSecured < 0 ? 'text-[#f43f5e]' : 'text-[#94a3b8]'
-                              }`}>
-                                {t.rrSecured.toFixed(2)}
-                              </td>
-                              <td className="py-2.5 px-3 text-right">
-                                {(() => {
-                                  const status = getTradeStatus(t)
-                                  if (status === 'running') {
-                                    return <span className="text-[10px] font-semibold uppercase text-[#475569]">—</span>
-                                  }
-                                  const res = classifyResult(t.rrSecured)
-                                  return (
-                                    <span className={`text-[10px] font-semibold uppercase ${
-                                      res === 'win' ? 'text-[#14f5c7]' : res === 'loss' ? 'text-[#f43f5e]' : 'text-[#f59e0b]'
-                                    }`}>
-                                      {res}
-                                    </span>
-                                  )
-                                })()}
-                              </td>
-                              <td className="py-2.5 px-3 text-right">
-                                <div className="flex items-center gap-1 justify-end">
-                                  <button onClick={e => { e.stopPropagation(); handleEdit(t) }} className="text-[#475569] hover:text-[#94a3b8] transition-colors p-0.5">
-                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                    </svg>
-                                  </button>
-                                  <button onClick={e => { e.stopPropagation(); setDeleteConfirmId(t.id) }} className="text-[#475569] hover:text-[#f43f5e] transition-colors p-0.5">
-                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            </>
+        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+          {tab === 'journals' ? (
+            <JournalManage />
           ) : (
-            <AnalysisTab />
+            <div className="flex-1 flex flex-col p-6 pt-4 overflow-hidden min-h-0">
+              {tab === 'entry' ? (
+                <>
+                  {/* Trade Table */}
+                  <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+                    <div className="flex items-center justify-between mb-3 shrink-0">
+                      <h2 className="text-xs font-semibold text-[#475569] uppercase tracking-wider">
+                        Trade Journal ({trades.length} entries)
+                      </h2>
+                      <button
+                        onClick={() => { setEditingId(null); setFormOpen(true) }}
+                        className="glass rounded-lg px-3 py-1.5 text-xs font-semibold text-[#94a3b8] hover:text-[#f1f5f9] hover:bg-white/5 transition-all"
+                      >
+                        + Add Trade
+                      </button>
+                    </div>
+
+                    {!activeJournalId ? (
+                      <div className="glass rounded-xl flex items-center justify-center h-48 text-sm text-[#475569]">
+                        No journal selected. Create one in the Journals tab.
+                      </div>
+                    ) : loading ? (
+                      <div className="glass rounded-xl flex items-center justify-center h-48 text-sm text-[#475569]">
+                        Loading trades...
+                      </div>
+                    ) : trades.length === 0 ? (
+                      <div className="glass rounded-xl flex items-center justify-center h-48 text-sm text-[#475569]">
+                        No trades yet. Click &quot;+ Add Trade&quot; to begin.
+                      </div>
+                    ) : (
+                      <div className="glass rounded-xl flex-1 overflow-auto min-h-0">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="text-[11px] font-semibold text-[#475569] uppercase tracking-wider border-b border-white/5 sticky top-0 z-10" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                              <th className="text-left py-2.5 px-3 w-16">Incl</th>
+                              <th className="text-left py-2.5 px-3 w-20">Symbol</th>
+                              <th className="text-left py-2.5 px-3 w-24">Date</th>
+                              <th className="text-left py-2.5 px-3 w-16">Time</th>
+                              <th className="text-left py-2.5 px-3 w-20">Status</th>
+                              <th className="text-right py-2.5 px-3 w-20">SL</th>
+                              <th className="text-right py-2.5 px-3 w-20">RR</th>
+                              <th className="text-right py-2.5 px-3 w-20">Result</th>
+                              <th className="text-right py-2.5 px-3 w-8"></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {trades.map(t => {
+                              return (
+                                <tr key={t.id} onClick={() => setSelectedTrade(t)} className="border-b border-white/[0.02] hover:bg-white/[0.04] transition-colors cursor-pointer">
+                                  <td className="py-2.5 px-3">
+                                    <span className={`text-xs ${t.includeInAnalysis ? 'text-[#14f5c7]' : 'text-[#475569]'}`}>
+                                      {t.includeInAnalysis ? 'Yes' : 'No'}
+                                    </span>
+                                  </td>
+                                  <td className="py-2.5 px-3">
+                                    <span className="font-semibold text-[#f1f5f9] text-xs">{t.symbol}</span>
+                                  </td>
+                                  <td className="py-2.5 px-3 text-xs text-[#94a3b8]">{t.date}</td>
+                                  <td className="py-2.5 px-3 text-xs text-[#94a3b8]">{t.time}</td>
+                                  <td className="py-2.5 px-3">
+                                    {(() => {
+                                      const status = getTradeStatus(t)
+                                      return (
+                                        <span className={`inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase ${
+                                          status === 'running' ? 'text-[#14f5c7]' : 'text-[#475569]'
+                                        }`}>
+                                          {status === 'running' ? (
+                                            <span className="w-1.5 h-1.5 rounded-full bg-[#14f5c7] animate-pulse" />
+                                          ) : (
+                                            <svg className="w-2.5 h-2.5" viewBox="0 0 16 16" fill="currentColor">
+                                              <path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" />
+                                            </svg>
+                                          )}
+                                          {status}
+                                        </span>
+                                      )
+                                    })()}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-right text-xs text-[#94a3b8]">{t.stopLoss}</td>
+                                  <td className={`py-2.5 px-3 text-right text-xs font-semibold ${
+                                    t.rrSecured > 0 ? 'text-[#14f5c7]' : t.rrSecured < 0 ? 'text-[#f43f5e]' : 'text-[#94a3b8]'
+                                  }`}>
+                                    {t.rrSecured.toFixed(2)}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-right">
+                                    {(() => {
+                                      const status = getTradeStatus(t)
+                                      if (status === 'running') {
+                                        return <span className="text-[10px] font-semibold uppercase text-[#475569]">—</span>
+                                      }
+                                      const res = classifyResult(t.rrSecured)
+                                      return (
+                                        <span className={`text-[10px] font-semibold uppercase ${
+                                          res === 'win' ? 'text-[#14f5c7]' : res === 'loss' ? 'text-[#f43f5e]' : 'text-[#f59e0b]'
+                                        }`}>
+                                          {res}
+                                        </span>
+                                      )
+                                    })()}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-right">
+                                    <div className="flex items-center gap-1 justify-end">
+                                      <button onClick={e => { e.stopPropagation(); handleEdit(t) }} className="text-[#475569] hover:text-[#94a3b8] transition-colors p-0.5">
+                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                          <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                      </button>
+                                      <button onClick={e => { e.stopPropagation(); setDeleteConfirmId(t.id) }} className="text-[#475569] hover:text-[#f43f5e] transition-colors p-0.5">
+                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <AnalysisTab />
+              )}
+            </div>
           )}
         </div>
 

@@ -16,6 +16,26 @@ model User {
   accounts      Account[]
   sessions      Session[]
   trades        Trade[]
+  journals      Journal[]
+}
+
+enum JournalType {
+  BACKTEST
+  FORWARD
+  LIVE
+}
+
+model Journal {
+  id        String      @id @default(cuid())
+  userId    String
+  name      String
+  type      JournalType @default(LIVE)
+  strategy  String      @default("")
+  config    Json        @default("{}")
+  createdAt DateTime    @default(now())
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trades Trade[]
 }
 
 model Account {
@@ -54,9 +74,10 @@ model VerificationToken {
 }
 
 model Trade {
-  id                   String  @id @default(cuid())
+  id                   String      @id @default(cuid())
   userId               String
-  includeInAnalysis    Boolean @default(true)
+  journalId            String?
+  includeInAnalysis    Boolean     @default(true)
   symbol               String
   date                 String
   time                 String
@@ -64,21 +85,22 @@ model Trade {
   rrSecured            Float
   durationCandles      Int?
   maxRR                Float?
-  notes                String  @default("")
-  news                 String  @default("")
-  newsNotes            String  @default("")
-  models               String  @default("")
-  extra                String  @default("")
-  criteria1            Boolean @default(false)
-  criteria2            Boolean @default(false)
-  criteria3            Boolean @default(false)
-  criteria4            Boolean @default(false)
-  criteria5            Boolean @default(false)
-  metOverallPlan       Boolean @default(false)
-  criteriaNotes        String  @default("")
-  contextScreenshot    String  @default("")
-  validationScreenshot String  @default("")
-  entryScreenshot      String  @default("")
-  finalScreenshot      String  @default("")
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notes                String      @default("")
+  news                 String      @default("")
+  newsNotes            String      @default("")
+  models               String      @default("")
+  extra                String      @default("")
+  criteria1            Boolean     @default(false)
+  criteria2            Boolean     @default(false)
+  criteria3            Boolean     @default(false)
+  criteria4            Boolean     @default(false)
+  criteria5            Boolean     @default(false)
+  metOverallPlan       Boolean     @default(false)
+  criteriaNotes        String      @default("")
+  contextScreenshot    String      @default("")
+  validationScreenshot String      @default("")
+  entryScreenshot      String      @default("")
+  finalScreenshot      String      @default("")
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  journal Journal? @relation(fields: [journalId], references: [id])
 }

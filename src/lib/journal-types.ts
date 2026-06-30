@@ -1,5 +1,16 @@
 export type TradeResult = 'win' | 'be' | 'loss'
 export type TradeStatus = 'running' | 'completed'
+export type JournalType = 'BACKTEST' | 'FORWARD' | 'LIVE'
+
+export interface Journal {
+  id: string
+  userId: string
+  name: string
+  type: JournalType
+  strategy: string
+  config: JournalConfig
+  createdAt: string
+}
 
 export function getTradeStatus(t: { finalScreenshot: string }): TradeStatus {
   return t.finalScreenshot ? 'completed' : 'running'
